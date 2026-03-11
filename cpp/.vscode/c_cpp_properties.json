@@ -1,0 +1,16 @@
+{
+  "configurations": [
+
+    {
+       "name": "linux",
+        "includePath": ["${workspaceFolder}/**"],
+      "defines": ["_DEBUG", "UNICODE", "_UNICODE"],
+       "cStandard": "c17",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "${default}",
+      "compilerPath": "/usr/bin/gcc"
+
+    }
+  ],
+  "version": 4
+}
