@@ -3,9 +3,10 @@
 //#include "../util/Iterator.h"
 
 #include <functional>
+#include "../Object.h"
 
 template <typename E>
-class Iterable
+class Iterable: public Object
 {
 
 public:

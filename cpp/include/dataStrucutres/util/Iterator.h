@@ -1,9 +1,10 @@
 #pragma once
 
 #include <functional>
+#include "../Object.h"
 
 template <typename E>
-class Iterator
+class Iterator: public Object
 {
 
 public:

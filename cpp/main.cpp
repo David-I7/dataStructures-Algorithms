@@ -9,7 +9,7 @@ class Point{
    
 
     public:
-     int x;
+    int x;
     int y;
 
     Point(int x, int y): x(x), y(y){};
@@ -46,46 +46,42 @@ class Point{
 };
 
 std::ostream& operator<<(std::ostream& os,const Point& p){
-    {os << "(" << p.x << ", " << p.y << ")\n"; }
+    {os << "(" << p.x << ", " << p.y << ")"; }
     return os;
 }
 
 
 int main()
 {
-    // ArrayList<Point> arr;
-
     // arr.add(Point());
     // arr.add(Point());
 
     // arr.forEach([](const Point& p) {std::cout << "(" << p.x << ", " << p.y << ")\n"; });
 
-    Object a;
-    Object b;
-    Object &c = b;
+    // Object a;
+    // Object b;
+    // Object &c = b;
 
-    std::cout << a << b;
-    std::cout << a.hashCode() << "\n" << b.hashCode() << "\n";
-    std::cout << b.equals(c) << "\n";
-    std::cout << c.equals(a) << "\n";
+    // std::cout << a << b;
+    // std::cout << a.hashCode() << "\n" << b.hashCode() << "\n";
+    // std::cout << b.equals(c) << "\n";
+    // std::cout << c.equals(a) << "\n";
 
-    ArrayList<int> arr1;
-    ArrayList<int> arr2;
+    // ArrayList<int> arr1;
+    // ArrayList<int> arr2;
 
-    std::cout << arr1 << arr2 ;
-    std::cout << arr1.equals(arr2);
+    // std::cout << arr1 << arr2 ;
+    // std::cout << arr1.equals(arr2);
 
-    // std::vector<Point> arr(1);
+    ArrayList<Point> arr;
 
     // Point a = Point();
     // Point b = Point();
 
-    // arr.push_back(a);
-    // arr.push_back(b);
+    arr.add(Point());
+    arr.add(Point());
 
-    // for(int i = 0 ; i < arr.size(); ++i){
-    //     std::cout << arr[i];
-    // }
+    std::cout << arr;
 
     return 0;
 }
