@@ -5,7 +5,7 @@
 #include <vector>
 #include "include/dataStrucutres/Object.h"
 
-class Point{
+class Point: public Object{
    
 
     public:

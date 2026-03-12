@@ -7,6 +7,10 @@ bool Object::equals(const Object& obj) const{
     return &(*this) == &obj;
 }
 
+bool Object::operator==(const Object& obj) const{
+    return this->equals(obj);
+}
+
 std::size_t Object::hashCode() const{
     return std::hash<const Object*>{}(this);
 }
