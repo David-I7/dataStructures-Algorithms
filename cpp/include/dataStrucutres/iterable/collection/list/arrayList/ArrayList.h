@@ -45,12 +45,26 @@ class ArrayList : public List<E>
         return (E*) malloc(sizeof(ArrayList<E>) * capacity);
     }
 
-    void _set(int index, const E& element){
-        if (index < 0 || index > m_size) {
+    void checkIndex(int index,int end = -1){
+        end = end == -1 ? m_size : end;
+        if (index < 0 || index > end) {
             std::stringstream ss;
             ss << "Index " << index << " out of bounds for size " << m_size;
             throw std::out_of_range(ss.str());
         };
+    }
+
+
+    void checkSize(){
+        if (m_capacity == 0){
+                resize(2);
+        }else if (m_size == m_capacity){
+            resize( m_capacity * 2);
+        }
+    }
+
+    void _set(int index, const E& element){
+        checkIndex(index);
 
         if (index != m_size){
             E& old = m_items[index];
@@ -61,6 +75,39 @@ class ArrayList : public List<E>
             }else if (++m_size == m_capacity){
                 resize( m_capacity * 2);
             }
+        }
+    }
+
+    void _add(int index, const E& element){
+        if (index < 0 || index > m_size) {
+            std::stringstream ss;
+            ss << "Index " << index << " out of bounds for size " << m_size;
+            throw std::out_of_range(ss.str());
+        };
+        
+        if (m_capacity == 0){
+            resize(2);
+
+        }else if (++m_size == m_capacity){
+            resize( m_capacity * 2);
+        }
+
+
+    }
+
+    void shuffle(int start){
+        if (start == m_size) return;
+        
+        new (&m_items[m_size]) E(std::move(m_items[m_size-1]));
+
+        for(int i = m_size-1; i > start; --i){
+            m_items[i] = std::move(m_items[i-1]);
+        }
+    }
+
+    void shuffleBack(int start){
+        for(int i = start; i < m_size-1; --i){
+            m_items[i] = std::move(m_items[i+1]);
         }
     }
 
@@ -124,6 +171,28 @@ class ArrayList : public List<E>
             action(m_items[i]);
         }
     };
+    bool add(int index,const E& e) override{
+        checkIndex(index);
+        
+        checkSize();
+
+        shuffle(index);
+
+        new (&m_items[index]) E(e);
+
+        return true;
+    };
+    bool add(int index,E&& e) override{
+        checkIndex(index);
+        
+        checkSize();
+
+        shuffle(index);
+
+        new (&m_items[index]) E(std::move(e));
+
+        return true;
+    };
     bool add(const E& e) override{
         set(m_size, e);
         return true;
@@ -132,10 +201,13 @@ class ArrayList : public List<E>
         set(m_size, std::move(e));
         return true;
     };
-    // bool addAll(const Collection<E>& e){
+    // bool addAll(const Collection<E>& e) override{
     //     for(int i = 0; i < e.size();++i){
-    //         add()
+    //         add(e.)
     //     }
+    // };
+    // bool removeAll(const Collection<E>& e) override{
+
     // };
     void clear() override{
         if (m_capacity == 0) return;
@@ -149,21 +221,66 @@ class ArrayList : public List<E>
     int size() const override{
         return m_size;
     };
-    //void add(int index, E element) = 0;
-    //List<E> subList(int fromIndex, int toIndex) = 0;
+    List<E>* subList(int fromIndex, int toIndex) override{
+        int capacity = toIndex - fromIndex;
+        if (capacity < 0) throw std::invalid_argument("toIndex argument must be greater than fromIndex");
+        checkIndex(fromIndex);
+        checkIndex(toIndex);
+
+        List<E>* subList = new ArrayList<E>(capacity);
+        for(int i = fromIndex; i < toIndex; ++i){
+            subList->add(m_items[i]);
+        };
+
+        return subList;
+    };
     void set(int index, const E& element) override{
-        _set(index, element);
+        checkIndex(index);
+        
+        if(index == m_size){
+            checkSize();
+            ++m_size;
+        }
 
         // copy element in-place
         new (&m_items[index]) E(element);
     };
     void set(int index, E&& element) override{
-        _set(index,element);
+        checkIndex(index);
+        
+        if(index == m_size){
+            checkSize();
+            ++m_size;
+        }
 
         // move element in-place
         new (&m_items[index]) E(std::move(element));
     };
     
+    E& get(int index) override{
+        checkIndex(index,m_size - 1);
+        return m_items[index];
+    }
+
+    int indexOf(const E& e) override{
+        for(int i = 0; i < m_size;++i){
+            if (e == m_items[i]) return i;
+        }  
+        return -1;
+    }
+
+    virtual bool contains(const E& e) override{
+        return indexOf(e) != -1;
+    };
+
+    virtual bool remove(const E& e) override{
+        int index = indexOf(e);
+        if (index == -1) return false;
+
+        m_items[index].~E();
+        shuffleBack(index);
+        --m_size;
+    };
 
     friend std::ostream& operator<<( std::ostream& os,const ArrayList<E>& obj){
         if (obj.m_size == 0){
