@@ -12,4 +12,5 @@ public:
     virtual void clear() = 0;
     virtual bool isEmpty() const = 0;
     virtual int size() const = 0;
+    //virtual bool contains() = 0;
 };

@@ -2,13 +2,16 @@
 
 #include "../List.h"
 #include <algorithm>
+#include <cstdlib>
 #include <exception>
 #include <stdexcept>
 #include <sstream>
 #include <new>
+#include <malloc.h>
+#include "../../../../Object.h"
 
 template <typename E>
-class ArrayList : public List<E>
+class ArrayList : public List<E>, public Object
 {
     int m_capacity = 2;
     int m_size = 0;
@@ -16,7 +19,7 @@ class ArrayList : public List<E>
 
     void resize(int newCapacity){
         E* newData = new E[newCapacity];
-
+        
         int to = m_size < newCapacity ? m_size : newCapacity;
         for(int i = 0 ; i < to;++i){
             newData[i] = std::move(m_items[i]);
@@ -40,7 +43,7 @@ class ArrayList : public List<E>
         m_items = new E[m_capacity];
     }
     ~ArrayList(){
-        for(int i = 0; i < m_size;++i){
+        for(int i = 0; i < m_capacity;++i){
             m_items[i].~E();
         }
 
@@ -62,6 +65,7 @@ class ArrayList : public List<E>
     //     }
     // };
     void clear() override{
+        if (m_capacity == 0) return;
         resize(0);
         m_size = 0;
     };
@@ -73,7 +77,7 @@ class ArrayList : public List<E>
     };
     //void add(int index, E element) = 0;
     //List<E> subList(int fromIndex, int toIndex) = 0;
-    const E& set(int index, const E& element) override{
+    void set(int index, const E& element) override{
         if (index < 0 || index > m_size) {
             std::stringstream ss;
             ss << "Index " << index << " out of bounds for size " << m_size;
@@ -96,7 +100,21 @@ class ArrayList : public List<E>
         if (m_size == m_capacity){
             resize( m_capacity * 2);
         }
+    };
 
-        return element;
+    friend std::ostream& operator<<( std::ostream& os,const ArrayList<E>& obj){
+        if (obj.m_size == 0){
+            os << "[]\n";
+            return os;
+        }
+
+        os << "[";
+        int i = 0;
+        for(; i < obj.m_size -1;++i){
+            os << obj.m_items[i] << ", ";
+        }
+        os << obj.m_items[i] << "]\n";
+
+        return os;
     };
 };

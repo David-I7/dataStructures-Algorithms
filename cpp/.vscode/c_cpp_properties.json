@@ -9,7 +9,6 @@
       "cppStandard": "c++17",
       "intelliSenseMode": "${default}",
       "compilerPath": "/usr/bin/gcc"
-
     }
   ],
   "version": 4
