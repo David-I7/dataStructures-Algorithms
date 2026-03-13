@@ -4,12 +4,10 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
-#include <exception>
 #include <stdexcept>
 #include <sstream>
-#include <new>
+#include "./ArrayListIterator.h"
 #include <cstdlib>
-#include "../../../../Object.h"
 
 template <typename E>
 class ArrayList : public List<E>
@@ -55,11 +53,18 @@ class ArrayList : public List<E>
     }
 
 
-    void checkSize(){
+    void checkGrow(){
         if (m_capacity == 0){
                 resize(2);
         }else if (m_size == m_capacity){
             resize( m_capacity * 2);
+        }
+    }
+
+    void checkShrink(){
+        if(m_capacity <= 2) return;
+        else if (m_size / 3 < m_capacity){
+            resize(m_capacity / 2);
         }
     }
 
@@ -133,7 +138,9 @@ class ArrayList : public List<E>
         other.m_capacity =0;
     }
 
-    //Iterator<E> iterator() = 0;
+    Iterator<E>* iterator() override{
+        return new ArrayListIterator<E>(this);
+    };
     void forEach(const std::function<void(const E&)>& action) const override {
         for(int i = 0; i < m_size;++i){
             action(m_items[i]);
@@ -142,7 +149,7 @@ class ArrayList : public List<E>
     bool add(int index,const E& e) override{
         checkIndex(index);
         
-        checkSize();
+        checkGrow();
 
         shuffle(index);
 
@@ -153,7 +160,7 @@ class ArrayList : public List<E>
     bool add(int index,E&& e) override{
         checkIndex(index);
         
-        checkSize();
+        checkGrow();
 
         shuffle(index);
 
@@ -182,6 +189,7 @@ class ArrayList : public List<E>
         freeData();
         m_capacity = 0;
         m_size = 0;
+        m_items = nullptr;
     };
     bool isEmpty() const override{
         return m_size == 0;
@@ -206,7 +214,7 @@ class ArrayList : public List<E>
         checkIndex(index);
         
         if(index == m_size){
-            checkSize();
+            checkGrow();
             ++m_size;
         }
 
@@ -217,7 +225,7 @@ class ArrayList : public List<E>
         checkIndex(index);
         
         if(index == m_size){
-            checkSize();
+            checkGrow();
             ++m_size;
         }
 
@@ -237,17 +245,20 @@ class ArrayList : public List<E>
         return -1;
     }
 
-    virtual bool contains(const E& e) override{
+    bool contains(const E& e) override{
         return indexOf(e) != -1;
     };
 
-    virtual bool remove(const E& e) override{
+    bool remove(const E& e) override{
         int index = indexOf(e);
         if (index == -1) return false;
 
         m_items[index].~E();
         shuffleBack(index);
         --m_size;
+        checkShrink();
+
+        return true;
     };
 
     friend std::ostream& operator<<( std::ostream& os,const ArrayList<E>& obj){

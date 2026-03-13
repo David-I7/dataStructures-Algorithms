@@ -1,4 +1,4 @@
-#include "../../include/dataStrucutres/Object.h"
+#include "dataStrucutres/Object.h"
 
 #include <cstddef>
 #include <functional>
