@@ -1,9 +1,9 @@
-#include "include/dataStrucutres/iterable/collection/list/arrayList/ArrayList.h"
+#include "dataStrucutres/iterable/collection/list/arrayList/ArrayList.h"
 
 #include <iostream>
 #include <ostream>
 #include <vector>
-#include "include/dataStrucutres/Object.h"
+#include "dataStrucutres/Object.h"
 
 class Point: public Object{
    
