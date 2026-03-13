@@ -1,6 +1,7 @@
 #include "dataStrucutres/iterable/collection/list/arrayList/ArrayList.h"
+#include "dataStrucutres/iterable/collection/list/arrayList/ArrayListIterator.h"
+#include "dataStrucutres/util/Iterator.h"
 #include <gtest/gtest.h>
-#include <exception>
 
 ArrayList<int> setupArrayList(int capacity, int to){
     ArrayList<int> arr(capacity);
@@ -25,6 +26,16 @@ namespace  {
 
         arr.clear();
         EXPECT_EQ(arr.size(),0);
+    }
+
+    TEST(ArrayList, IteratorPrintsAllElements){
+         ArrayList<int> arr = setupArrayList(10, 8);
+
+         Iterator<int>* it = arr.iterator();
+
+         while(it->hasNext()){
+            std::cout << it->next() << ", ";
+         }
     }
 
 }

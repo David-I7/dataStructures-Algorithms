@@ -4,12 +4,10 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
-#include <exception>
 #include <stdexcept>
 #include <sstream>
-#include <new>
+#include "./ArrayListIterator.h"
 #include <cstdlib>
-#include "../../../../Object.h"
 
 template <typename E>
 class ArrayList : public List<E>
@@ -140,7 +138,9 @@ class ArrayList : public List<E>
         other.m_capacity =0;
     }
 
-    //Iterator<E> iterator() = 0;
+    Iterator<E>* iterator() override{
+        return new ArrayListIterator<E>(this);
+    };
     void forEach(const std::function<void(const E&)>& action) const override {
         for(int i = 0; i < m_size;++i){
             action(m_items[i]);

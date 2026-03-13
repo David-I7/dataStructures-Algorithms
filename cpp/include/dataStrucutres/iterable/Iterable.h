@@ -1,6 +1,6 @@
 #pragma once
 
-//#include "../util/Iterator.h"
+#include "../util/Iterator.h"
 
 #include <functional>
 #include "../Object.h"
@@ -10,7 +10,7 @@ class Iterable: public Object
 {
 
 public:
-    //virtual Iterator<E> iterator() = 0;
+    virtual Iterator<E>* iterator() = 0;
     virtual void forEach(const std::function<void(const E&)>& action) const = 0;
     virtual ~Iterable() = default;
 };
