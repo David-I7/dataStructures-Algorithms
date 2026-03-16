@@ -1,6 +1,5 @@
 #pragma once
 
-// #include "dataStrucutres/iterable/collection/list/arrayList/ArrayList.h"
 #include "dataStrucutres/util/ListIterator.h"
 #include <stdexcept>
 

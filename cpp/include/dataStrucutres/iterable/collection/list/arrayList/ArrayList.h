@@ -68,18 +68,20 @@ class ArrayList : public List<E>
         }
     }
 
-    void shuffle(int start){
-        if (start == m_size) return;
+    bool shuffleForward(int start){
+        if (start == m_size) return false;
         
         new (&m_items[m_size]) E(std::move(m_items[m_size-1]));
 
         for(int i = m_size-1; i > start; --i){
             m_items[i] = std::move(m_items[i-1]);
         }
+
+        return true;
     }
 
     void shuffleBack(int start){
-        for(int i = start; i < m_size-1; --i){
+        for(int i = start; i < m_size-1; ++i){
             m_items[i] = std::move(m_items[i+1]);
         }
     }
@@ -138,7 +140,7 @@ class ArrayList : public List<E>
         other.m_capacity =0;
     }
 
-    Iterator<E>* iterator() override{
+    ArrayListIterator<E>* iterator() override{
         return new ArrayListIterator<E>(this);
     };
     void forEach(const std::function<void(const E&)>& action) const override {
@@ -151,9 +153,9 @@ class ArrayList : public List<E>
         
         checkGrow();
 
-        shuffle(index);
+        if (shuffleForward(index)) m_size++;
 
-        new (&m_items[index]) E(e);
+        set(index,e);
 
         return true;
     };
@@ -162,9 +164,9 @@ class ArrayList : public List<E>
         
         checkGrow();
 
-        shuffle(index);
+        if(shuffleForward(index)) m_size++;
 
-        new (&m_items[index]) E(std::move(e));
+        set(index,std::move(e));
 
         return true;
     };
@@ -197,7 +199,7 @@ class ArrayList : public List<E>
     int size() const override{
         return m_size;
     };
-    List<E>* subList(int fromIndex, int toIndex) override{
+    ArrayList<E>* subList(int fromIndex, int toIndex) override{
         int capacity = toIndex - fromIndex;
         if (capacity < 0) throw std::invalid_argument("toIndex argument must be greater than fromIndex");
         checkIndex(fromIndex);
