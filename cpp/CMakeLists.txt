@@ -21,7 +21,9 @@ enable_testing()
 
 add_executable(
   test.out
-  test/dataStructures/iterable/collection/list/arrayList/ArrayListTest.cpp
+  test/iterable/collection/list/arrayList/ArrayListTest.cpp
+  test/iterable/collection/list/arrayList/ArrayListIteratorTest.cpp
+  test/util/CollectionsTest.cpp
 )
 target_link_libraries(
   test.out

@@ -1,21 +1,21 @@
-#include "dataStrucutres/iterable/collection/list/arrayList/ArrayList.h"
-#include "dataStrucutres/iterable/collection/list/arrayList/ArrayListIterator.h"
+#include "iterable/collection/list/arrayList/ArrayList.h"
 #include <gtest/gtest.h>
 #include <functional>
 
-template<typename T> 
-ArrayList<T> setupArrayList(int capacity, std::function<T(int)> mapper){
-    ArrayList<T> arr(capacity);
-    for(int i = 0 ; i < capacity; ++i){
-        arr.add(mapper(i));
-    }
-    return arr;
-}
 
-int intMapper(int index){return index;}
-int fixedMapper(int index){return 1;}
 
 namespace  {
+    template<typename T> 
+    ArrayList<T> setupArrayList(int capacity, std::function<T(int)> mapper){
+        ArrayList<T> arr(capacity);
+        for(int i = 0 ; i < capacity; ++i){
+            arr.add(mapper(i));
+        }
+        return arr;
+    }
+
+    int intMapper(int index){return index;}
+    int fixedMapper(int index){return 1;}
 
 
     TEST(ArrayList, OutOfBoundIndexAccessThrowsError) {

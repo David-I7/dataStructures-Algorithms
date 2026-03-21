@@ -1,92 +1,61 @@
 #pragma once
 
 #include "../List.h"
+#include "util/ListIterator.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <stdexcept>
 #include <sstream>
-#include "./ArrayListIterator.h"
 #include <cstdlib>
 
 template <typename E>
 class ArrayList : public List<E>
 {
-    int m_capacity = 2;
-    int m_size = 0;
-    E* m_items;
-
-    void freeData(){
-        for(int i = 0; i < m_size;++i){
-            m_items[i].~E();
-        }
-        free(m_items);
-    }
-
-    void resize(int newCapacity){
-        E* newData = allocMemory(newCapacity);
-      
-        if(newData == nullptr && newCapacity != 0) return;
-        
-        int to = m_size < newCapacity ? m_size : newCapacity;
-        for(int i = 0 ; i < to;++i){
-            new (&newData[i]) E(std::move(m_items[i]));
-        }
-    
-        freeData();
-
-        m_capacity = newCapacity;
-        m_items = newData;
-    }
-
-    E* allocMemory(std::size_t capacity){
-        return (E*) malloc(sizeof(ArrayList<E>) * capacity);
-    }
-
-    void checkIndex(int index,int end = -1){
-        end = end == -1 ? m_size : end;
-        if (index < 0 || index > end) {
-            std::stringstream ss;
-            ss << "Index " << index << " out of bounds for size " << m_size;
-            throw std::out_of_range(ss.str());
-        };
-    }
-
-
-    void checkGrow(){
-        if (m_capacity == 0){
-                resize(2);
-        }else if (m_size == m_capacity){
-            resize( m_capacity * 2);
-        }
-    }
-
-    void checkShrink(){
-        if(m_capacity <= 2) return;
-        else if (m_size / 3 < m_capacity){
-            resize(m_capacity / 2);
-        }
-    }
-
-    bool shuffleForward(int start){
-        if (start == m_size) return false;
-        
-        new (&m_items[m_size]) E(std::move(m_items[m_size-1]));
-
-        for(int i = m_size-1; i > start; --i){
-            m_items[i] = std::move(m_items[i-1]);
-        }
-
-        return true;
-    }
-
-    void shuffleBack(int start){
-        for(int i = start; i < m_size-1; ++i){
-            m_items[i] = std::move(m_items[i+1]);
-        }
-    }
-
     public:
+    class ArrayListIterator: public ListIterator<E>{
+        ArrayList<E>* m_source;
+        int m_index = -1;
+
+        public:
+        ArrayListIterator(ArrayList<E>* list): m_source(list){};
+
+        bool hasPrevious() override{
+            return m_index > 0;
+        };
+        E& previous() override{
+            if (hasPrevious())
+                return m_source->get(--m_index);
+            else throw std::out_of_range("No more element left to traverse");
+        };
+        int nextIndex() override{
+            return m_index + 1 ;
+        };
+        int previousIndex() override{
+            return m_index - 1;
+        };
+        E& next() override{
+            if (hasNext())
+                return m_source->get(++m_index);
+            else throw std::out_of_range("No more element left to traverse");
+        };
+        bool hasNext() override{
+            return m_index < m_source->size() - 1;
+        };
+        void forEachRemaining(const std::function<void(E&)>& action) override{
+            while(hasNext()){
+                action(next());
+            }
+        };
+        void set(const E& e) override{
+            if (m_index >=0 && m_index < m_source->size())
+                m_source->set(m_index,e);
+        };
+        void add(const E& e) override{
+            m_source->add(e);
+        };
+    };
+
     ArrayList(){
         m_items = allocMemory( m_capacity);
     }
@@ -140,8 +109,8 @@ class ArrayList : public List<E>
         other.m_capacity =0;
     }
 
-    ArrayListIterator<E>* iterator() override{
-        return new ArrayListIterator<E>(this);
+    ArrayListIterator* iterator() override{
+        return new ArrayListIterator(this);
     };
     void forEach(const std::function<void(const E&)>& action) const override {
         for(int i = 0; i < m_size;++i){
@@ -205,7 +174,7 @@ class ArrayList : public List<E>
         checkIndex(fromIndex);
         checkIndex(toIndex);
 
-        List<E>* subList = new ArrayList<E>(capacity);
+        ArrayList<E>* subList = new ArrayList<E>(capacity);
         for(int i = fromIndex; i < toIndex; ++i){
             subList->add(m_items[i]);
         };
@@ -278,4 +247,80 @@ class ArrayList : public List<E>
 
         return os;
     };
+
+    private:
+     int m_capacity = 2;
+    int m_size = 0;
+    E* m_items;
+
+    void freeData(){
+        for(int i = 0; i < m_size;++i){
+            m_items[i].~E();
+        }
+        free(m_items);
+    }
+
+    void resize(int newCapacity){
+        E* newData = allocMemory(newCapacity);
+      
+        if(newData == nullptr && newCapacity != 0) return;
+        
+        int to = m_size < newCapacity ? m_size : newCapacity;
+        for(int i = 0 ; i < to;++i){
+            new (&newData[i]) E(std::move(m_items[i]));
+        }
+    
+        freeData();
+
+        m_capacity = newCapacity;
+        m_items = newData;
+    }
+
+    E* allocMemory(std::size_t capacity){
+        return (E*) malloc(sizeof(ArrayList<E>) * capacity);
+    }
+
+    void checkIndex(int index,int end = -1){
+        end = end == -1 ? m_size : end;
+        if (index < 0 || index > end) {
+            std::stringstream ss;
+            ss << "Index " << index << " out of bounds for size " << m_size;
+            throw std::out_of_range(ss.str());
+        };
+    }
+
+
+    void checkGrow(){
+        if (m_capacity == 0){
+                resize(2);
+        }else if (m_size == m_capacity){
+            resize( m_capacity * 2);
+        }
+    }
+
+    void checkShrink(){
+        if(m_capacity <= 2) return;
+        else if (m_size / 3 < m_capacity){
+            resize(m_capacity / 2);
+        }
+    }
+
+    bool shuffleForward(int start){
+        if (start == m_size) return false;
+        
+        new (&m_items[m_size]) E(std::move(m_items[m_size-1]));
+
+        for(int i = m_size-1; i > start; --i){
+            m_items[i] = std::move(m_items[i-1]);
+        }
+
+        return true;
+    }
+
+    void shuffleBack(int start){
+        for(int i = start; i < m_size-1; ++i){
+            m_items[i] = std::move(m_items[i+1]);
+        }
+    }
+    
 };
