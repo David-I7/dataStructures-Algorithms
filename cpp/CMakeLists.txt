@@ -13,7 +13,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(googletest)
 
-add_executable(main.out main.cpp src/dataStructures/Object.cpp)
+add_executable(main.out main.cpp src/java/Object.cpp)
 
 target_include_directories(main.out PRIVATE include)
 
