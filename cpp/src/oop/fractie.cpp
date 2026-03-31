@@ -183,16 +183,16 @@ class GaussianInteger{
 
             size_t i_pos = s.find('i');
 
-            // Case 1: no 'i' → purely real
+            // Case 1: avem doar partea reala
             if (i_pos == std::string::npos) {
                 real = std::stoi(s);
                 return GaussianInteger(real, 0);
             }
 
-            // Remove 'i'
+            // Sterg i
             std::string without_i = s.substr(0, i_pos);
 
-            // Find last '+' or '-' (excluding first char)
+            // Gasesc ultimul + sau -
             size_t split = std::string::npos;
             for (size_t i = 1; i < without_i.size(); ++i) {
                 if (without_i[i] == '+' || without_i[i] == '-') {
@@ -200,7 +200,7 @@ class GaussianInteger{
                 }
             }
 
-            // Case 2: only imaginary part (e.g., "i", "-i", "3i")
+            // Case 2: avem doar partea reala (e.g., "i", "-i", "3i")
             if (split == std::string::npos) {
                 if (without_i == "" || without_i == "+") imag = 1;
                 else if (without_i == "-") imag = -1;
@@ -208,7 +208,7 @@ class GaussianInteger{
                 return GaussianInteger(0, imag);
             }
 
-            // Case 3: both real and imaginary parts
+            // Case 3: avem partea reala si imaginara
             real = std::stoi(without_i.substr(0, split));
             std::string imag_part = without_i.substr(split);
 
@@ -252,7 +252,7 @@ class Fractie{
 
         // Equality operator
         Fractie<T> operator==(const Fractie<T>& other){
-            return toDecimal() == other.toDecimal();
+            return numarator == other.numarator && numitor == other.numitor;
         }
 
         Fractie<T> operator+(const Fractie<T>& other){
@@ -314,11 +314,6 @@ class Fractie{
     private:
         T numarator;
         T numitor;    
-
-        double toDecimal(){
-            return numarator / numitor;
-        }
-
 };
 
 
