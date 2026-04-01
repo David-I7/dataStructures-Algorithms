@@ -39,30 +39,50 @@ class Multime{
             size++;
         }
 
-        // Copy constructor
+        // Constructor de copiere
         Multime(const Multime<T>&other){
             allocElements(other.capacity);
             copyElements(other.elements,elements, capacity);
+            size = other.size;
         }
         
-        // Move constructor
+        // Constructor move
         Multime(Multime<T>&&other){
-            allocElements(other.capacity);
-            moveElements(other.elements,other.capacity, elements);
+            elements = other.elements;
+            capacity = other.capacity;
+            size = other.size;
+
+            other.elements = nullptr;
+            other.capacity = 0;
+            other.size = 0;
         }
 
-        // Copy assignment
-        void operator=(const Multime<T>&other){
+        // Atribuire prin copiere
+        Multime& operator=(const Multime<T>&other){
+            if(&other == this) return *this;
+
             freeElements();
             allocElements(other.capacity);
             copyElements(other.elements,elements, capacity);
+            size = other.size;
+
+            return *this;
         }
         
-        // Move assignment
-        void operator=(Multime<T>&&other){
+        // Atribuire prin move
+        Multime& operator=(Multime<T>&&other){
+            if(&other == this) return *this;
+
             freeElements();
-            allocElements(other.capacity);
-            moveElements(other.elements,other.capacity, elements);
+            elements = other.elements;
+            capacity = other.capacity;
+            size = other.size;
+
+            other.elements = nullptr;
+            other.capacity = 0;
+            other.size = 0;
+
+            return *this;
         }
     
         // Adauga un element in multime
@@ -75,8 +95,9 @@ class Multime{
                 ++size;
             }else{
                 // Verific ca elementul sa nu fie deja in multime 
-                if (find(node, el) == nullptr){
-                    getTail(node)->setNext(new Node(el));
+                if (node->find(el) == nullptr){
+                    // Adauga elementul nou la coada listei inaintuite
+                    node->getTail()->setNext(new Node(el));
                     ++size;
                 }
             };
@@ -99,14 +120,14 @@ class Multime{
                 // Verific ca elementul sa fie in multime  
 
                 if (node->getData() == el){
-                    // Daca elementul este capul listei
+                    // Daca elementul este capul listei inlantuite
                     elements[h] = node->getNext();
                     node->setNext(nullptr);
                     delete node;
                 }else{
-                    // Daca elementul nu este capul listei
+                    // Daca elementul nu este capul listei inlantuite
                     // Gasesc nodul care pointeaza catre element pentru a restaura legaturile listei inlantuite
-                    Node* before = findBefore(node, el);
+                    Node* before = node->findBefore(el);
 
                     // Elementul nu se afla in multime
                     if (before == nullptr) return *this;
@@ -129,40 +150,45 @@ class Multime{
         // Trebuie sa aibe aceeasi marime (size), dar nu neaparat si capacity
         bool operator==(const Multime<T>& other){
             if (other.size != size) return false;
-
-            return containsAll(this, other);
+ 
+            return containsAll(*this, other);
         }
 
         // Returneaza adevarat daca partea stanga a operatiei este o submultime stricta a partii drepti 
         bool operator<(const Multime<T>& other){
             if (size >= other.size) return false;
 
-            return containsAll(this, other);
+            return containsAll(*this, other);
         }
         
         // Returneaza adevarat daca partea stanga a operatiei este o submultime a partii drepti 
         bool operator<=(const Multime<T>& other){
             if (size > other.size) return false;
 
-            return containsAll(this, other);
+            return containsAll(*this, other);
         }
         
         // Returneaza adevarat daca partea stanga a operatiei este un superset strict a partii drepti 
         bool operator>(const Multime<T>& other){
-            if (other.size <= size) return false;
+            if (other.size >= size) return false;
 
-            return containsAll(other, this);
+            return containsAll(other, *this);
         }
         
         // Returneaza adevarat daca partea stanga a operatiei este un superset a partii drepti 
         bool operator>=(const Multime<T>& other){
             if (other.size > size) return false;
-
-            return containsAll(other, this);
+            
+            return containsAll(other, *this);
         }
 
         // Reuniune pe multimi
         Multime<T> operator+(const Multime<T>& other){
+            // Cazurile triviale
+            if (other.size == 0 && size == 0) return Multime<T>();
+            else if (other.size == 0) return Multime<T>(*this);
+            else if (size == 0) return Multime<T>(other);
+
             // Copiez multimea other
             Multime<T> reuniune = other;
 
@@ -177,7 +203,6 @@ class Multime{
                 }while(node != nullptr);
             }
 
-
             return reuniune;
         }
         
@@ -185,9 +210,12 @@ class Multime{
         Multime<T> operator*(const Multime<T>& other){
             Multime<T> intersectie;
 
-            // Adaug elementele din multimea mea
-            for(std::size_t i = 0 ; i < capacity;++i){
-                Node* node = elements[i];
+            
+            const Multime<T>& minSet = (size <= other.size) ? *this : other;
+            
+            // Adaug elementele din multimea cu mai putine elemente care se gasesc in cealalta multime
+            for(std::size_t i = 0 ; i < minSet.capacity;++i){
+                Node* node = minSet.elements[i];
                 if (node == nullptr) continue;
 
                 do{
@@ -202,15 +230,39 @@ class Multime{
             return intersectie;
         }
 
+        // Diferenta pe multimi. Partea stanga - partea dreapta
+         Multime<T> operator-(const Multime<T>& other){
+            // Cazurile triviale
+            if (other.size == 0) return Multime<T>(*this);
+            else if (size == 0) return Multime<T>();
+
+            Multime<T> diferenta;
+
+            // Adaug elementele din multimea mea care nu se gasesc in multimea other
+            for(std::size_t i = 0 ; i < capacity;++i){
+                Node* node = elements[i];
+                if (node == nullptr) continue;
+
+                do{
+                    if (!other.contains(node->getData())){
+                        diferenta << node->getData();
+                    }
+                     node=node->getNext();
+                }while(node != nullptr);
+            }
+
+            return diferenta;
+        }
+
         // Verifica apartenta in multime a elelemtului
-        bool contains(const T& el){
+        bool contains(const T& el) const{
             if (size == 0) return false;
 
             std::size_t h = hashIndex(el, capacity);
 
             Node* node = elements[h];
            
-            return find(node, el) != nullptr;
+            return node && node->find(el) != nullptr;
         }
 
         // Afiseaza lista pe standard output
@@ -251,7 +303,7 @@ class Multime{
         class Node{
             public:
            
-            Node(T data, Node* next = nullptr):data(data),next(next){}
+            Node(const T& data, Node* next = nullptr):data(data),next(next){}
             
             Node(T&& data, Node* next = nullptr):data(std::move(data)),next(next){}
                 
@@ -269,21 +321,68 @@ class Multime{
                 return data;
             }
 
+            // Copiez elementul deep 
+            Node* deepCopy(){
+                return _deepCopy(this);
+            }
+
+            // Gasesc nodul ce contine elementul el
+            Node* find(const T& el){
+                Node* root = this;
+                while (root != nullptr) {
+                    if (root->getData() == el) return root;
+                    root = root->getNext();
+                }
+
+                return root;
+            }
+
+            // Gasesc nodul care pointeaza catre nodul ce contine elementul 
+            Node* findBefore(const T& el){
+                Node* root = this;
+                while (root->getNext() != nullptr) {
+                    if (root->getNext()->getData()== el) return root;
+                    root = root->getNext();
+                }
+
+                return nullptr;
+            }
+
+            // Gasesc coada din lista
+            Node* getTail(){
+                Node* node = this;
+                while(node->getNext()){
+                    node = node->getNext();
+                }
+                return node;
+            }
+
             private:
                 T data;
                 Node* next;
+
+                Node* _deepCopy(const Node* other){
+                    if (other == nullptr) return nullptr;
+
+                    Node* copy = _deepCopy(other->next);
+
+                    return new Node(other->data,copy);
+                }
         };
 
         std::size_t capacity=0, size=0;
         Node** elements = nullptr;
         std::hash<T> hash;
        
-        inline std::size_t hashIndex(const T& el, std::size_t capacity){
+        inline std::size_t hashIndex(const T& el, std::size_t capacity) const{
             return hash(el) % capacity;
         }
 
         // Returneaza true daca toate elementele din a se gasesc in b
         bool containsAll(const Multime<T>& a, const Multime<T>& b){
+            // Cazul trivial
+            if (a.size == 0) return true;
+
             for(std::size_t i = 0; i < a.capacity;++i){
                 Node* node = a.elements[i];
                 if (node == nullptr) continue;
@@ -351,23 +450,15 @@ class Multime{
                 std::size_t h = i;
                 
                 // Copiez nodul recursiv
-                Node* copy = deepCopy(node);
+                Node* copy = node->deepCopy();
                 toBuf[h] = copy;
             }
-        }
-
-        Node* deepCopy(const Node* other){
-            if (other == nullptr) return nullptr;
-
-            Node* copy = deepCopy(other->next);
-
-            return new Node(other->data,copy);
         }
 
         void moveElements(Node** oldBuf,std::size_t oldCapacity,Node** newBuf,std::size_t newCapacity){
             // Mut elementele din memoria veche de lungime capacity
             // in memoria noua de lungime newCapacity
-            for(std::size_t i = 0; i < capacity; ++i){
+            for(std::size_t i = 0; i < oldCapacity; ++i){
                 
                 Node* node = oldBuf[i];
                 if (node == nullptr) continue;
@@ -377,9 +468,10 @@ class Multime{
                     std::size_t h = hashIndex(node->getData(), newCapacity);
                     
                     // Inserez nodul in memoria noua alocata 
-                    Node* tail = getTail(newBuf[h]);
-                    if (tail == nullptr) {newBuf[h] = node; tail = node;}
-                    else tail->setNext(node);
+                    Node* dest = newBuf[h];
+                    Node* tail;
+                    if (dest == nullptr) {newBuf[h] = node; tail = node;}
+                    else {tail = dest->getTail(); tail->setNext(node);};
             
                     // Trec la urmatorul element in lista inlantuita
                     node = node->getNext();
@@ -394,38 +486,8 @@ class Multime{
             }
         }
 
-        // Gasesc coada din lista
-        Node* getTail(Node* node){
-            while(node->getNext()){
-                node = node->getNext();
-            }
-            return node;
-        }
-
-        // Gasesc nodul ce contine elementul
-        Node* find(Node* root,const T& el){
-            while (root != nullptr) {
-                if (root->getData() == el) return root;
-                root = root->getNext();
-            }
-
-            return root;
-        }
-
-        // Gasesc nodul care pointeaza catre nodul ce contine elementul 
-        Node* findBefore(Node* root,const T& el){
-            if (root == nullptr) return nullptr;
-
-            while (root->getNext() != nullptr) {
-                if (root->getNext()->getData()== el) return root;
-                root = root->getNext();
-            }
-
-            return nullptr;
-        }
-
-        // Verfica daca este necesar sa alloc sau sa reduc din spatiu
-        // Mai mult saptiu -> mai putine coliziuni
+        // Verfica daca este necesar sa alloc sau sa reduc din spatiu.
+        // Mai mult saptiu -> mai putine coliziuni.
         // Mai putin spatiu -> mai multe coliziuni
         void checkResize(){
             if (size >= 3 * capacity){
@@ -438,12 +500,75 @@ class Multime{
 
 
 int main(){
-    Multime<int> multime;
+    std::cout << "=== Creez multimile ===\n"; 
+    
+    Multime<int> A; A << 1 << 2 << 3 << 4; 
+    Multime<int> B; B << 3 << 4 << 5 << 6; 
+    
+    std::cout << "A = " << A << "\n"; 
+    std::cout << "B = " << B << "\n"; 
+    
+    std::cout << "\n=== Constructor cu un singur element ===\n"; 
+    Multime<int> C(10); 
+    std::cout << "C = " << C << "\n"; 
+    
+    std::cout << "\n=== Constructor de copiere ===\n"; 
+    Multime<int> D = A; 
+    std::cout << "D (copie a lui A) = " << D << "\n"; 
+    
+    std::cout << "\n=== Constructor move  ===\n"; 
+    Multime<int> E = std::move(D); 
+    std::cout << "E (mutat din D) = " << E << "\n"; 
+    std::cout << "D (dupa move) = " << D << "\n"; 
+    
+    std::cout << "\n=== Adaugare de elemente (<<) ===\n"; 
+    A << 5 << 6; 
+    std::cout << "A dupa adaugarea elementelor 5,6: " << A << "\n"; 
+    
+    std::cout << "\n=== Stergere de elemente (>>) ===\n"; 
+    A >> 2 >> 100; 
+    std::cout << "A dupa stergerea lui 2 si 100: " << A << "\n"; 
+    
+    std::cout << "\n=== Apartenenta ===\n"; 
+    std::cout << "A contine 3? " << (A.contains(3) ? "da" : "nu") << "\n";
+    std::cout << "A contine 2? " << (A.contains(2) ? "da" : "nu") << "\n"; 
+    
+    std::cout << "\n=== Operatii pe multimi ===\n"; 
+    
+    Multime<int> reuniune = A + B; 
+    std::cout << "A + B (reuniune) = " << reuniune << "\n";
+    
+    Multime<int> intersectie = A * B; 
+    std::cout << "A * B (intersectie) = " << intersectie << "\n";
+    
+    Multime<int> diferenta = A - B; 
+    std::cout << "A - B (diferenta) = " << diferenta << "\n"; 
+    
+    std::cout << "\n=== Operatii relationale ===\n"; 
+    Multime<int> F; 
+    F << 3 << 4; 
+    std::cout << "F = " << F << "\n"; 
+    std::cout << "B = " << B << "\n"; 
 
-    multime << 1 << 2 << 3 << 4 << 5 << 6 << 7 << 8 << 9 << 10 << 11 << 11 << 12 << 13 << 14 << 15 << 16 ;
-    std::cout << multime;
-
-    multime >> 1 >> 5 >> 10;
-    std::cout << multime;
-
+    std::cout << "F == B ? " << (F == B ? "true" : "false") << "\n"; 
+    
+    std::cout << "F < B ? " << (F < B ? "true" : "false") << "\n"; 
+    
+    std::cout << "F <= B ? " << (F <= B ? "true" : "false") << "\n";
+    
+    std::cout << "B > F ? " << (B > F ? "true" : "false") << "\n"; 
+    
+    std::cout << "B >= F ? " << (B >= F ? "true" : "false") << "\n"; 
+     
+    std::cout << "\n=== Operatii de atribuire ===\n"; 
+    Multime<int> G; 
+    G = A;
+    std::cout << "G (copiat din A) = " << G << "\n";
+    
+    Multime<int> H; 
+    H = std::move(G); 
+    std::cout << "H (atribuit prin move din G) = " << H << "\n";
+    std::cout << "G (dupa move) = " << G << "\n"; 
+    
+    std::cout << "\n=== Sfarsit ===\n"; return 0;
 }
