@@ -2,6 +2,7 @@
 #include <ostream>
 #include <utility>
 #include <iostream>
+#include <initializer_list>
 
 // Multimea este construita ca un array de liste inlantuite (Separate Chaining Hash Set)
 // Exemplu: [Node*, nullptr, Node*, nullptr, ...]
@@ -36,6 +37,14 @@ class Multime{
             std::size_t h = hashIndex(element, capacity);
             elements[h] = new Node(std::move(element));
             size++;
+        }
+
+        // Constructor pentru conversia mai multor elemente la multimea ce contine doar elementele distincte 
+        Multime(std::initializer_list<T> list):capacity(DEFAULT_CAPACITY){
+            allocElements(capacity);
+            for(const T& el: list){
+                *this << el;
+            }
         }
 
         // Constructor de copiere (Deep Copy)
@@ -265,9 +274,10 @@ class Multime{
             return node && node->find(el) != nullptr;
         }
 
+        // Metoda folosita doar pentru testare
         std::string getStats() const {
-        return "(Size = " + std::to_string(size) + ", Capacity = " + std::to_string(capacity) + ")";
-    }
+            return "(Size = " + std::to_string(size) + ", Capacity = " + std::to_string(capacity) + ")";
+        }
 
         inline std::size_t getSize(){
             return size;
@@ -275,7 +285,7 @@ class Multime{
 
         // Afiseaza lista pe standard output
         friend std::ostream& operator<<(std::ostream& os,const Multime<T>& multime){
-            if (multime.size == 0) os << "{}";
+            if (multime.size == 0) {os << "{}"; return os;};
            
             os << '{';
             
@@ -304,6 +314,9 @@ class Multime{
             
             return os;
         }
+        
+        // Permit clasei std::hash<Multime<T>> sa acceseze elementele private ale multimii pentru a genera hashul
+        friend std::hash<Multime<T>>;
 
 
     private:
@@ -476,16 +489,6 @@ class Multime{
             }
         }
 
-        // Verifica daca capacity este 0 inainte de a adauga un element nou in multime
-        // Putem ajunge in aceasta stare daca am facut move de la o multime la alta.
-        // Move lasa multimea sursa in starea capacity = 0, size = 0, elements = nullptr
-        void checkAlloc(){
-            if (capacity == 0){
-                allocElements(DEFAULT_CAPACITY);
-                size =0;
-            }
-        }
-
         // Verfica daca este necesar sa adaug sau sa reduc din capacity.
         void checkResize(){
             if (size >= 2 * capacity){
@@ -499,132 +502,320 @@ class Multime{
         }
 };
 
-// =========================================================
+// Clasa 'multime' are nevoie de o functie de hash in caz ca vrem sa avem o multime de multimi (Multime<Multime<T>>)
+namespace std {
+    template<typename T>
+    struct hash<Multime<T>>{
+        std::size_t operator()(const Multime<T>& multime) const{
+            std::size_t seed = 0;
+            for(std::size_t i = 0; i < multime.size;++i){
+                auto node = multime.elements[i];
+                
+                while(node != nullptr){
+                    // XOR este comutativ, deci nu conteaza ordinea in care calculam hashul
+                    // ex: ((1 ^ 2 )^ 3) = (1 ^ (2 ^ 3)) = 0
+                    seed ^= std::hash<T>{}(node->getData());
+                    node= node->getNext();
+                }
+            }
+            return seed;
+        }
+    };
+}
+
+// ==============
 // Testare
-// =========================================================
+// ==============
+
+// Clasa folosita pentru test
+class Point{
+    public:
+        Point(int x = 0, int y = 0): x(x),y(y){};
+    
+        inline int getX() const {
+            return x;
+        }
+    
+        inline int getY() const {
+            return y;
+        }
+
+        inline void setX(int x) {
+            this->x = x;
+        }
+
+        inline void setY(int y) {
+            this->y = y;
+        }
+
+        // Multimea are nevoie de operatorul == pentru a verifica duplicatele
+        bool operator==(const Point& other) const {
+            return x == other.x && y == other.y;
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const Point& p) {
+            return os << "(" << p.x << ", " << p.y << ")";
+        }
+
+    private:
+        int x = 0,y = 0;
+};
+
+// Multimea are nevoie de o functie de hash pentru clasa Point
+namespace std {
+    template <>
+    struct hash<Point> {
+        std::size_t operator()(const Point& p) const {
+            // Combinam hash-urile membrilor x si y
+            return std::hash<int>()(p.getX()) ^ (std::hash<int>()(p.getY()) << 1);
+        }
+    };
+}
 
 int main(){
-    std::cout << "=== 1. Initializare si Constructori ===\n"; 
+    std::cout << "==========================================\n";
+    std::cout << "   TEST: Multime de int \n";
+    std::cout << "==========================================\n";
+    {
+        std::cout << "=== 1. Initializare si Constructori ===\n"; 
+        
+        Multime<int> A; A << 1 << 2 << 3 << 4; 
+        Multime<int> B{3,4,5,6}; 
+        
+        std::cout << "A = " << A << "\n"; 
+        std::cout << "B (initializer list)=  " << B << "\n"; 
+        
+        // Verificam alocarea initiala cand se ofera direct un element
+        Multime<int> C(10); 
+        std::cout << "C (singur element) = " << C << "\n"; 
+        
+        // Testam deep copy-ul (modificarea lui D nu trebuie sa afecteze pe A)
+        Multime<int> D = A; 
+        std::cout << "D (copie a lui A) = " << D << "\n"; 
     
-    Multime<int> A; A << 1 << 2 << 3 << 4; 
-    Multime<int> B; B << 3 << 4 << 5 << 6; 
+        // Testam move constructor-ul (D trebuie sa ramana intr-o stare goala, dar valida)
+        Multime<int> E = std::move(D); 
+        std::cout << "E (mutat din D) = " << E << "\n"; 
+        std::cout << "D (dupa move, trebuie sa fie {}) = " << D << "\n"; 
+
+        std::cout << "\n=== 2. Testare stare 'Moved-From' ===\n";
+        // Asiguram faptul ca un obiect mutat poate fi refolosit fara sa crape programul
+        D << 100 << 200; 
+        std::cout << "D (dupa adaugare) = " << D << "\n";
+        D >> 100;
+        std::cout << "D (contine 200?) = " << (D.contains(200) ? "Da" : "Nu") << "\n";
+
+        std::cout << "\n=== 3. Operatii pe Multimi ===\n";
+        Multime<int> reuniune = A + B;
+        std::cout << "A + B (Reuniune) = " << reuniune << "\n";
+
+        Multime<int> intersectie = A * B;
+        std::cout << "A * B (Intersectie) = " << intersectie << "\n";
+
+        Multime<int> diferenta1 = A - B;
+        std::cout << "A - B (Diferenta) = " << diferenta1 << "\n";
+
+        Multime<int> diferenta2 = B - A;
+        std::cout << "B - A (Diferenta) = " << diferenta2 << "\n";
+
+        std::cout << "\n=== 4. Operatii Relationale ===\n";
+        Multime<int> S{3,4};
+        std::cout << "S = " << S << "\n";
+        std::cout << "B = " << B << "\n";
+        
+        // Verificam incluziunile matematice
+        std::cout << "S este submultime a lui B? (S <= B): " << (S <= B ? "Da" : "Nu") << "\n";
+        std::cout << "B este superset pentru S? (B >= S): "   << (B >= S ? "Da" : "Nu") << "\n";
+        std::cout << "Sunt S si B egale? (S == B): "           << (S == B ? "Da" : "Nu") << "\n\n";
+
+        std::cout << "=== 5. Test de Stres (Coliziuni si Resize) ===\n";
+    Multime<int> StressSet;
+        
+        std::cout << "Initial: " << StressSet.getStats() << "\n";
+
+        // Fortam extinderea capacitatii (Rehashing in sus)
+        for(int i = 0; i < 10000; i++) {
+            StressSet << (i * 10);
+        }
+        
+        std::cout << "Dupa adaugare 10000 elemente:\n";
+        std::cout << "Stats: " << StressSet.getStats() << "\n";
+
+        // Fortam micsorarea capacitatii (Rehashing in jos)
+        for(int i = 0; i < 9500; i++) {
+            StressSet >> (i * 10);
+        }
+        
+        std::cout << "Dupa stergere 9500 elemente:\n";
+        std::cout << "Stats: " << StressSet.getStats() << "\n";
+
+        std::cout << "\n=== 6. Testare copy si move assignment ===\n";
+        Multime<int> Original{1,2,3};
+        Multime<int> Copie; 
+        Multime<int> Moved;
+
+        // Atribuire prin copiere (Deep Copy)
+        Copie = Original;
+
+        // Modificam copia
+        Copie << 4 << 5; 
+        std::cout << "Original: " << Original << "\n";
+        std::cout << "Copie (modificata, nu afecteaza Original): " << Copie << "\n";
+
+        // Atribuire prin move 
+        Moved = std::move(Original);
+        
+        // Atribuire prin move (Transfer de resurse)
+        std::cout << "Moved (preia datele): " << Moved << "\n";
+        std::cout << "Original (golit dupa mutare): " << Original << "\n\n";
+    }
+
+    std::cout << "==========================================\n";
+    std::cout << "   TEST: Multime de point \n";
+    std::cout << "==========================================\n";
+    // Acest test verifica daca multimea foloseste corect specializarea 
+    // std::hash<Point> si operatorul '==' definit de utilizator.
+    {
+        std::cout << "=== 1. Initializare si Constructori ===\n"; 
+        
+        Multime<Point> A; A << Point{0, 0} << Point{1, 2} << Point{5, 5};
+        Multime<Point> B{Point{1, 2} , Point{-1, -1}}; 
+        
+        std::cout << "A = " << A << "\n"; 
+        std::cout << "B (initializer list)=  " << B << "\n"; 
+        
+        std::cout << "\n=== 2. Operatii pe Multimi ===\n";
+        Multime<Point> reuniune = A + B;
+        std::cout << "A + B (Reuniune) = " << reuniune << "\n";
+
+        Multime<Point> intersectie = A * B;
+        std::cout << "A * B (Intersectie) = " << intersectie << "\n";
+
+        Multime<Point> diferenta1 = A - B;
+        std::cout << "A - B (Diferenta) = " << diferenta1 << "\n";
+
+        Multime<Point> diferenta2 = B - A;
+        std::cout << "B - A (Diferenta) = " << diferenta2 << "\n";
+
+        std::cout << "\n=== 3. Operatii Relationale ===\n";
+        Multime<Point> S{Point{-1, -1}};
+        std::cout << "S = " << S << "\n";
+        std::cout << "B = " << B << "\n";
+        
+        std::cout << "S este submultime a lui B? (S <= B): " << (S <= B ? "Da" : "Nu") << "\n";
+        std::cout << "B este superset pentru S? (B >= S): "   << (B >= S ? "Da" : "Nu") << "\n";
+        std::cout << "Sunt S si B egale? (S == B): "           << (S == B ? "Da" : "Nu") << "\n";
+
+        std::cout << "\n=== 4. Test de Stres (Coliziuni si Resize) ===\n";
+        Multime<Point> StressSet;
+        
+        std::cout << "Initial: " << StressSet.getStats() << "\n";
+
+        for(int i = 0; i < 1000; i++) {
+            StressSet << Point{(i * 10),(i*10)};
+        }
+        
+        std::cout << "Dupa adaugare 1000 elemente:\n";
+        std::cout << "Stats: " << StressSet.getStats() << "\n";
+
+        for(int i = 0; i < 980; i++) {
+            StressSet >> Point{(i * 10),(i*10)};
+        }
+        
+        std::cout << "Dupa stergere 980 elemente:\n";
+        std::cout << "Stats: " << StressSet.getStats() << "\n\n";
+    }
+
+    std::cout << "==========================================\n";
+    std::cout << "   TEST: Multime de multimi \n";
+    std::cout << "==========================================\n";
+    // Acest test verifica daca clasa poate sa hasheze si sa compare propriul tip de date recursiv.
+    {
+
+        std::cout << "=== 1. Initializare si Constructori ===\n"; 
+        
+        Multime<Multime<int>> A; A << Multime<int>{0, 0} << Multime<int>{1, 2} << Multime<int>{5, 5};
+        Multime<Multime<int>> B{Multime<int>{1, 2} , Multime<int>{-1, 1}}; 
+        
+        std::cout << "A = " << A << "\n"; 
+        std::cout << "B (initializer list)=  " << B << "\n"; 
+        
+        std::cout << "\n=== 2. Operatii pe Multimi ===\n";
+        Multime<Multime<int>> reuniune = A + B;
+        std::cout << "A + B (Reuniune) = " << reuniune << "\n";
+
+        Multime<Multime<int>> intersectie = A * B;
+        std::cout << "A * B (Intersectie) = " << intersectie << "\n";
+
+        Multime<Multime<int>> diferenta1 = A - B;
+        std::cout << "A - B (Diferenta) = " << diferenta1 << "\n";
+
+        Multime<Multime<int>> diferenta2 = B - A;
+        std::cout << "B - A (Diferenta) = " << diferenta2 << "\n";
+
+        std::cout << "\n=== 3. Operatii Relationale ===\n";
+        Multime<Multime<int>> S{Multime<int>{-1, 1}};
+        std::cout << "S = " << S << "\n";
+        std::cout << "B = " << B << "\n";
+        
+        std::cout << "S este submultime a lui B? (S <= B): " << (S <= B ? "Da" : "Nu") << "\n";
+        std::cout << "B este superset pentru S? (B >= S): "   << (B >= S ? "Da" : "Nu") << "\n";
+        std::cout << "Sunt S si B egale? (S == B): "           << (S == B ? "Da" : "Nu") << "\n";
+
+        std::cout << "\n=== 4. Test de Stres (Coliziuni si Resize) ===\n";
+        Multime<Multime<int>> StressSet;
+        
+        std::cout << "Initial: " << StressSet.getStats() << "\n";
+
+        for(int i = 0; i < 1000; i++) {
+            StressSet << Multime<int>{(i * 10)};
+        }
+        
+        std::cout << "Dupa adaugare 1000 elemente:\n";
+        std::cout << "Stats: " << StressSet.getStats() << "\n";
+
+        for(int i = 0; i < 900; i++) {
+            StressSet >> Multime<int>{(i * 10)};
+        }
+        
+        std::cout << "Dupa stergere 900 elemente:\n";
+        std::cout << "Stats: " << StressSet.getStats() << "\n\n";
+    }
     
-    std::cout << "A = " << A << "\n"; 
-    std::cout << "B = " << B << "\n"; 
-    
-    // Constructor cu un singur element 
-    Multime<int> C(10); 
-    std::cout << "C (singur element) = " << C << "\n"; 
-    
-    // Constructor de copiere
-    Multime<int> D = A; 
-    std::cout << "D (copie a lui A) = " << D << "\n"; 
+    std::cout << "==========================================\n";
+    std::cout << "   TEST: Multime ce contine pointeri \n";
+    std::cout << "==========================================\n";
+    // Acest test demonstreaza ca multimea distruge doar resursele proprii, nu si cele alocate de utilizator.
+    {
+     
+        std::cout << "Creez doi pointeri distincti ce pointeaza catre valoarea 42 si ii adaug in multime\n";
+        int* ptr1 = new int(42);
+        int* ptr2 = new int(42);
+        
+        std::cout << "ptr1 = " << *ptr1 << "\n"; 
+        std::cout << "ptr2 = " << *ptr2 << "\n\n"; 
+        
+        {
+            Multime<int*> SetPointeri;
+            SetPointeri << ptr1 << ptr2;
+            std::cout << "SetPointeri = " << SetPointeri << "\n";
+            std::cout << "SetPointeri contine pointerul ptr1? " << (SetPointeri.contains(ptr1) ? "Da" : "Nu") << "\n";
+            int* ptr3 = new int(42);
+            std::cout << "Creez pointerul ptr3 = 42" << "\n";
+            std::cout << "SetPointeri contine pointerul ptr3? " << (SetPointeri.contains(ptr3) ? "Da" : "Nu") << "\n";
+            std::cout << "SetPointeri iese din scop si se apeleaza destructorul...\n\n";
+            delete ptr3;
+        }
+
+        std::cout << "Multimea a fost distrusa, mai sunt valizi pointerii ptr1 si ptr2? \n";
+        std::cout << "ptr1 = " << *ptr1 << " (Da)\n"; 
+        std::cout << "ptr2 = " << *ptr2 << " (Da)\n"; 
+
+        delete  ptr1;
+        delete  ptr2;
+    }
    
-    // Constructor move 
-    Multime<int> E = std::move(D); 
-    std::cout << "E (mutat din D) = " << E << "\n"; 
-    std::cout << "D (dupa move, trebuie sa fie {}) = " << D << "\n"; 
-
-    std::cout << "\n=== 2. Testare stare 'Moved-From' ===\n";
-    D << 100 << 200; // Adaugam in obiectul care a fost moved-from (sa vedem daca mai e valid)
-    std::cout << "D (dupa adaugare) = " << D << "\n";
-    D >> 100;
-    std::cout << "D (contine 200?) = " << (D.contains(200) ? "Da" : "Nu") << "\n";
-
-    std::cout << "\n=== 3. Operatii pe Multimi ===\n";
-    Multime<int> reuniune = A + B;
-    std::cout << "A + B (Reuniune) = " << reuniune << "\n";
-
-    Multime<int> intersectie = A * B;
-    std::cout << "A * B (Intersectie) = " << intersectie << "\n";
-
-    Multime<int> diferenta1 = A - B;
-    std::cout << "A - B (Diferenta) = " << diferenta1 << "\n";
-
-    Multime<int> diferenta2 = B - A;
-    std::cout << "B - A (Diferenta) = " << diferenta2 << "\n";
-
-    std::cout << "\n=== 4. Operatii Relationale ===\n";
-    Multime<int> Sub; Sub << 3 << 4;
-    std::cout << "Sub = " << Sub << "\n";
-    std::cout << "B = " << B << "\n";
-    
-    std::cout << "Sub este submultime a lui B? (Sub <= B): " << (Sub <= B ? "Da" : "Nu") << "\n";
-    std::cout << "B este superset pentru Sub? (B >= Sub): "   << (B >= Sub ? "Da" : "Nu") << "\n";
-    std::cout << "Sunt Sub si B egale? (Sub == B): "           << (Sub == B ? "Da" : "Nu") << "\n\n";
-
-    Multime<int> Vid1;
-    Multime<int> Vid2;
-    std::cout << "Vid1 = " << Vid1 << "\n";
-    std::cout << "Vid2 = " << Vid2 << "\n";
-
-    std::cout << "Vid1 este submultime a lui Vid2? (Vid1 <= Vid2): " << (Vid1 <= Vid2 ? "Da" : "Nu") << "\n";
-    std::cout << "Vid1 este submultime stricta a lui Vid2? (Vid1 < Vid2): " << (Vid1 < Vid2 ? "Da" : "Nu") << "\n";
-    std::cout << "Sunt Vid1 si Vid2 egale? (Vid1 == Vid2): "           << (Vid1 == Vid2 ? "Da" : "Nu") << "\n\n";
-    
-    std::cout << "\n=== 5. Test de Stres (Coliziuni si Resize) ===\n";
-   Multime<int> StressSet;
-    
-    std::cout << "Initial: " << StressSet.getStats() << "\n";
-
-    for(int i = 0; i < 100; i++) {
-        StressSet << (i * 10);
-    }
-    
-    std::cout << "Dupa adaugare 50 elemente:\n";
-    std::cout << "Stats: " << StressSet.getStats() << "\n";
-    std::cout << "Continut: " << StressSet << "\n\n";
-
-    for(int i = 0; i < 95; i++) {
-        StressSet >> (i * 10);
-    }
-    
-    std::cout << "Dupa stergere 45 elemente:\n";
-    std::cout << "Stats: " << StressSet.getStats() << "\n";
-    std::cout << "Continut: " << StressSet << "\n\n";
-
-    std::cout << "=== 6. Testare Deep Copy si Self-Assignment ===\n";
-    Multime<int> Original; Original << 1 << 2 << 3;
-    Multime<int> Copie = Original;
-    
-    // Modificam copia
-    Copie << 4 << 5; 
-    std::cout << "Original: " << Original << "\n";
-    std::cout << "Copie (modificata): " << Copie << "\n";
-    
-    // Test Self-Assignment
-    Original = Original; 
-    std::cout << "Original (dupa Original = Original): " << Original << "\n";
-  
-
-    std::cout << "\n=== 7. Utilizare cu Tipuri Complexe (std::string) ===\n";
-    
-    Multime<std::string> Nume1; Nume1 << "Ion" << "Maria" << "Ana";
-    Multime<std::string> Nume2; Nume2 << "Maria" << "Vasile";
-    std::cout << "Nume1 = " << Nume1 << "\n";
-    std::cout << "Nume2 = " << Nume2 << "\n";
-    std::cout << "Reuniune = " << (Nume1 + Nume2) << "\n";
-    std::cout << "Intersectie = " << (Nume1 * Nume2) << "\n";
-    std::cout << "Diferenta (Nume1 - Nume2) = " << (Nume1 - Nume2) << "\n";
-    std::cout << "Diferenta (Nume2 - Nume1) = " << (Nume2 - Nume1) << "\n";
-
-    std::cout << "\n=== 7.1 Test Stres cu Tipuri Complexe ===\n";
-    Multime<std::string> BigStrings;
-    for(int i = 0; i < 50; i++) {
-        BigStrings << ("Item_nr_" + std::to_string(i));
-    }
-    
-    std::cout << "Dupa adaugare 50 elemente:\n";
-    std::cout << "Stats: " << BigStrings.getStats() << "\n";
-    std::cout << "Continut: " << BigStrings << "\n\n";
-              
-    for(int i = 0; i < 45; i++) {
-        BigStrings >> ("Item_nr_" + std::to_string(i));
-    }
-    
-    std::cout << "Dupa stergere 45 elemente:\n";
-    std::cout << "Stats: " << BigStrings.getStats() << "\n";
-    std::cout << "Continut: " << BigStrings << "\n\n";
-   
-    std::cout << "\n=== Sfarsit ===\n"; return 0;
+    std::cout << "\n==========================================\n";
+    std::cout << "   SFARSIT TEST\n";
+    std::cout << "==========================================\n";
 }
