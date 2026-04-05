@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <ostream>
+#include <string>
 #include <utility>
 #include <iostream>
 #include <initializer_list>
@@ -39,7 +40,7 @@ class Multime{
             size++;
         }
 
-        // Constructor pentru conversia mai multor elemente la multimea ce contine doar elementele distincte 
+        // Constructor pentru conversia mai multor elemente la multimea ce contine aceste elementele 
         Multime(std::initializer_list<T> list):capacity(DEFAULT_CAPACITY){
             allocElements(capacity);
             for(const T& el: list){
@@ -62,7 +63,7 @@ class Multime{
             capacity = other.capacity;
             size = other.size;
 
-            // Lasam obiectul 'other' intr-o stare valida, dar goala, pentru a evita crash-uri (modulo 0)
+            // Lasam obiectul 'other' intr-o stare valida, dar goala, pentru a evita crash-uri
             other.capacity = DEFAULT_CAPACITY;
             other.allocElements(other.capacity);
             other.size = 0;
@@ -99,24 +100,14 @@ class Multime{
             return *this;
         }
     
-        // Adauga un element in multime
+        // Adauga un element in multime cand este lvalue
         Multime<T>& operator<<(const T& el){
-            std::size_t h = hashIndex(el,capacity);
-            Node* node = elements[h];
-            
-            if (node == nullptr) {
-                elements[h] = new Node(el);
-                ++size;
-            }else{
-                // Daca nu exista deja, il adaugam in O(1) direct la capul listei
-                if (node->find(el) == nullptr){
-                    elements[h] = new Node(el,node);
-                    ++size;
-                }
-            };
+            return addImpl(el);
+        }
 
-            checkResize();
-            return *this;
+        // Adauga un element in multime cand este rvalue
+        Multime<T>& operator<<(T&& el){
+            return addImpl(std::move(el));
         }
         
         // Sterge un element din multime
@@ -393,6 +384,29 @@ class Multime{
             return std::hash<T>{}(el) % capacity;
         }
 
+        // Adauga un element in multime.
+        // Cu std::forward<U>(el), prezervam tipului referintei elementului 'el'.
+        // Altfel, un rvalue transmis catre functie ar deveni lvalue in interiorul functiei.  
+        template< typename U>
+        Multime<T>& addImpl(U&& el){
+            std::size_t h = hashIndex(el,capacity);
+            Node* node = elements[h];
+            
+            if (node == nullptr) {
+                elements[h] = new Node(std::forward<U>(el));
+                ++size;
+            }else{
+                // Daca nu exista deja, il adaugam in O(1) direct la capul listei
+                if (node->find(el) == nullptr){
+                    elements[h] = new Node(std::forward<U>(el),node);
+                    ++size;
+                }
+            };
+
+            checkResize();
+            return *this;
+        }
+
         // Returneaza true daca toate elementele din A se gasesc in B
         bool containsAll(const Multime<T>& a, const Multime<T>& b) const{
             // Cazul trivial
@@ -523,9 +537,9 @@ namespace std {
     };
 }
 
-// ==============
+// ==================================================================
 // Testare
-// ==============
+// ==================================================================
 
 // Clasa folosita pentru test
 class Point{
@@ -591,8 +605,12 @@ int main(){
         
         // Testam deep copy-ul (modificarea lui D nu trebuie sa afecteze pe A)
         Multime<int> D = A; 
-        std::cout << "D (copie a lui A) = " << D << "\n"; 
-    
+        std::cout << "D (copie a lui A) = " << D << "\n";
+
+        D << 0;
+        std::cout << "D (dupa modificare) = "  << D << "\n";
+        std::cout << "A (dupa modificarea din D) = " << A <<"\n";
+
         // Testam move constructor-ul (D trebuie sa ramana intr-o stare goala, dar valida)
         Multime<int> E = std::move(D); 
         std::cout << "E (mutat din D) = " << E << "\n"; 
@@ -629,7 +647,7 @@ int main(){
         std::cout << "Sunt S si B egale? (S == B): "           << (S == B ? "Da" : "Nu") << "\n\n";
 
         std::cout << "=== 5. Test de Stres (Coliziuni si Resize) ===\n";
-    Multime<int> StressSet;
+        Multime<int> StressSet;
         
         std::cout << "Initial: " << StressSet.getStats() << "\n";
 
@@ -656,17 +674,18 @@ int main(){
 
         // Atribuire prin copiere (Deep Copy)
         Copie = Original;
+        std::cout << "Original: " << Original << "\n";
 
         // Modificam copia
         Copie << 4 << 5; 
-        std::cout << "Original: " << Original << "\n";
         std::cout << "Copie (modificata, nu afecteaza Original): " << Copie << "\n";
+        std::cout << "Original (dupa modificarea copiei): " << Original << "\n";
 
         // Atribuire prin move 
         Moved = std::move(Original);
         
         // Atribuire prin move (Transfer de resurse)
-        std::cout << "Moved (preia datele): " << Moved << "\n";
+        std::cout << "Moved (preia datele din Original): " << Moved << "\n";
         std::cout << "Original (golit dupa mutare): " << Original << "\n\n";
     }
 
@@ -678,7 +697,7 @@ int main(){
     {
         std::cout << "=== 1. Initializare si Constructori ===\n"; 
         
-        Multime<Point> A; A << Point{0, 0} << Point{1, 2} << Point{5, 5};
+        Multime<Point> A; A << Point{0, 0} << Point{1, 1} << Point{5, 5};
         Multime<Point> B{Point{1, 2} , Point{-1, -1}}; 
         
         std::cout << "A = " << A << "\n"; 
@@ -698,7 +717,7 @@ int main(){
         std::cout << "B - A (Diferenta) = " << diferenta2 << "\n";
 
         std::cout << "\n=== 3. Operatii Relationale ===\n";
-        Multime<Point> S{Point{-1, -1}};
+        Multime<Point> S{Point{0, 0}};
         std::cout << "S = " << S << "\n";
         std::cout << "B = " << B << "\n";
         
@@ -729,13 +748,14 @@ int main(){
     std::cout << "==========================================\n";
     std::cout << "   TEST: Multime de multimi \n";
     std::cout << "==========================================\n";
-    // Acest test verifica daca clasa poate sa hasheze si sa compare propriul tip de date recursiv.
+    // Acest test verifica daca clasa poate sa hasheze 
+    // si sa compare propriul tip de date recursiv.
     {
 
         std::cout << "=== 1. Initializare si Constructori ===\n"; 
         
-        Multime<Multime<int>> A; A << Multime<int>{0, 0} << Multime<int>{1, 2} << Multime<int>{5, 5};
-        Multime<Multime<int>> B{Multime<int>{1, 2} , Multime<int>{-1, 1}}; 
+        Multime<Multime<int>> A; A << Multime<int>{} << Multime<int>{ 0} << Multime<int>{1, 2,3} << Multime<int>{5,6};
+        Multime<Multime<int>> B{Multime<int>{},Multime<int>{1, 2,3} , Multime<int>{0, 1}}; 
         
         std::cout << "A = " << A << "\n"; 
         std::cout << "B (initializer list)=  " << B << "\n"; 
@@ -754,7 +774,7 @@ int main(){
         std::cout << "B - A (Diferenta) = " << diferenta2 << "\n";
 
         std::cout << "\n=== 3. Operatii Relationale ===\n";
-        Multime<Multime<int>> S{Multime<int>{-1, 1}};
+        Multime<Multime<int>> S{Multime<int>{},Multime<int>{1, 2,3} , Multime<int>{0, 1}};
         std::cout << "S = " << S << "\n";
         std::cout << "B = " << B << "\n";
         
@@ -785,36 +805,37 @@ int main(){
     std::cout << "==========================================\n";
     std::cout << "   TEST: Multime ce contine pointeri \n";
     std::cout << "==========================================\n";
-    // Acest test demonstreaza ca multimea distruge doar resursele proprii, nu si cele alocate de utilizator.
+    // Acest test demonstreaza ca multimea distruge doar resursele proprii,
+    // nu si cele alocate de utilizator.
     {
      
         std::cout << "Creez doi pointeri distincti ce pointeaza catre valoarea 42 si ii adaug in multime\n";
         int* ptr1 = new int(42);
         int* ptr2 = new int(42);
         
-        std::cout << "ptr1 = " << *ptr1 << "\n"; 
-        std::cout << "ptr2 = " << *ptr2 << "\n\n"; 
+        std::cout << "ptr1 = " << ptr1 <<  ", *ptr1 == 42" << "\n";
+        std::cout << "ptr2 = " << ptr2 <<  ", *ptr2 == 42" << "\n\n";
         
         {
             Multime<int*> SetPointeri;
             SetPointeri << ptr1 << ptr2;
             std::cout << "SetPointeri = " << SetPointeri << "\n";
-            std::cout << "SetPointeri contine pointerul ptr1? " << (SetPointeri.contains(ptr1) ? "Da" : "Nu") << "\n";
+            std::cout << "SetPointeri (contine pointerul ptr1?) : " << (SetPointeri.contains(ptr1) ? "Da" : "Nu") << "\n";
             int* ptr3 = new int(42);
-            std::cout << "Creez pointerul ptr3 = 42" << "\n";
-            std::cout << "SetPointeri contine pointerul ptr3? " << (SetPointeri.contains(ptr3) ? "Da" : "Nu") << "\n";
+            std::cout << "Creez pointerul:" << " ptr3 = " << ptr3 <<  ", *ptr3 == 42" << "\n";
+            std::cout << "SetPointeri (contine pointerul ptr3?) : " << (SetPointeri.contains(ptr3) ? "Da" : "Nu") << "\n";
             std::cout << "SetPointeri iese din scop si se apeleaza destructorul...\n\n";
             delete ptr3;
         }
 
         std::cout << "Multimea a fost distrusa, mai sunt valizi pointerii ptr1 si ptr2? \n";
-        std::cout << "ptr1 = " << *ptr1 << " (Da)\n"; 
-        std::cout << "ptr2 = " << *ptr2 << " (Da)\n"; 
+        std::cout << "ptr1 = " << ptr1 <<  ", *ptr1 == " << *ptr1 << " (DA)" << "\n";
+        std::cout << "ptr2 = " << ptr2 <<  ", *ptr2 == " << *ptr2 << " (DA)" << "\n\n";
 
         delete  ptr1;
         delete  ptr2;
     }
-   
+
     std::cout << "\n==========================================\n";
     std::cout << "   SFARSIT TEST\n";
     std::cout << "==========================================\n";
