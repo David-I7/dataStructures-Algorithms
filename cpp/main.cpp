@@ -1,9 +1,8 @@
-#include "iterable/collection/list/arrayList/ArrayList.h"
+#include "java/iterable/collection/list/arrayList/ArrayList.h"
 
 #include <iostream>
 #include <ostream>
-#include <vector>
-#include "Object.h"
+#include "java/Object.h"
 
 class Point: public Object{
    

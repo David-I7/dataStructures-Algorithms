@@ -1,4 +1,4 @@
-#include "iterable/collection/list/arrayList/ArrayList.h"
+#include "java/iterable/collection/list/arrayList/ArrayList.h"
 #include <gtest/gtest.h>
 
 namespace{

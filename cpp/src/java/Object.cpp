@@ -1,10 +1,10 @@
-#include "Object.h"
+#include "java/Object.h"
 
 #include <cstddef>
 #include <functional>
 
 bool Object::equals(const Object& obj) const{
-    return &(*this) == &obj;
+    return this == &obj;
 }
 
 bool Object::operator==(const Object& obj) const{
