@@ -308,13 +308,17 @@ class Multime{
         
         // Permit clasei std::hash<Multime<T>> sa acceseze elementele private ale multimii pentru a genera hashul
         friend std::hash<Multime<T>>;
-
+        
+        // control granular
+        //friend std::size_t std::hash<Multime<T>>::operator()(const Multime<T>& multime) const;
 
     private:
         // Clasa interna folosita pentru a implementa elementele listei inlantuita
         class Node{
             public:
            
+            // Member initializer list previne compilatorul sa dea valori default
+            // variabilelor declarate in clasa. 
             Node(const T& data, Node* next = nullptr):data(data),next(next){}
             
             Node(T&& data, Node* next = nullptr):data(std::move(data)),next(next){}
@@ -567,6 +571,7 @@ class Point{
             return x == other.x && y == other.y;
         }
 
+        // NU este e functie asociata clasei, chiar daca este declarata in interiorul ei.
         friend std::ostream& operator<<(std::ostream& os, const Point& p) {
             return os << "(" << p.x << ", " << p.y << ")";
         }
