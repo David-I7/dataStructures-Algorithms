@@ -329,8 +329,6 @@ int main(){
     << c << "\n"
     << d << "\n";
 
-   
-
     try{
         a/b;
     }catch(std::overflow_error& e){

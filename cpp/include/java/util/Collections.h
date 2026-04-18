@@ -46,7 +46,6 @@ class Collections{
             default:
                 return;
         }
-    
     }
 
     private:
