@@ -2,6 +2,8 @@
 
 using namespace std;
 
+class C{};
+
 class A{
     public:
 
@@ -28,7 +30,7 @@ const char* A::ok(){
     return "OK";
 }
 
-class B : public A{
+class B : public A, private C{
     public: 
     // Expune metodele clasei A in caz ca definim si noi un overload pentru aceasta
     using A::get;
