@@ -3,6 +3,7 @@
 #include <ostream>
 #include <utility>
 #include <vector>
+#include <queue>
 
 template <typename T>
 class BinarySearchTree{
@@ -17,7 +18,43 @@ class BinarySearchTree{
         BinarySearchTree(): root(nullptr),_size(0),traversal_strategy(TRASVERSAL_STRATEGY::PRE_ORDER){}
 
         ~BinarySearchTree(){
-            
+            freeElements();
+        }
+
+        BinarySearchTree(const BinarySearchTree<T>& other){
+            copyElements(other);
+            traversal_strategy = other.traversal_strategy;
+        }
+
+        BinarySearchTree(BinarySearchTree<T>&& other){
+            root = other.root;
+            _size = other._size;
+            traversal_strategy = other.traversal_strategy;
+
+            root = nullptr;
+            _size = 0;
+            traversal_strategy = BinarySearchTree<T>::PRE_ORDER;
+        }
+        
+        BinarySearchTree<T>& operator=(const BinarySearchTree<T>& other){
+             if(&other == this) return *this;
+
+            freeElements();
+            copyElements(other);
+            traversal_strategy = other.traversal_strategy;
+        }
+
+        BinarySearchTree<T>& operator=(BinarySearchTree<T>&& other){
+            if(&other == this) return *this;
+
+            freeElements();
+            root = other.root;
+            _size = other._size;
+            traversal_strategy = other.traversal_strategy;
+
+            root = nullptr;
+            _size = 0;
+            traversal_strategy = BinarySearchTree<T>::PRE_ORDER;
         }
         
         void insert(const T& data){
@@ -109,56 +146,91 @@ class BinarySearchTree{
                 return os;
             } 
 
-            std::vector<Node*> stack;
-            
-
             switch(bst.traversal_strategy){
                 case BinarySearchTree<T>::TRASVERSAL_STRATEGY::IN_ORDER:{
-                    // stack.push_back(bst.root);
-
-                    // while(!stack.empty()){
-                    //     Node* cur = stack.back();
-
-                    //     if (cur->left){
-                    //         stack.push_back(cur->left);
-                    //     }else{
-                    //         std::cout << cur->data << " ";
-                    //         stack.pop_back();
-                            
-                    //         if (cur->right){
-                    //             stack.push_back(cur->right);
-                    //         }
-                    //     }
-                    // }
-
-                    // break;
-                }
-                
-                case BinarySearchTree<T>::TRASVERSAL_STRATEGY::PRE_ORDER:{
+                    std::vector<Node*> stack;
                     Node* cur = bst.root;
 
                     while(!stack.empty() || cur){
-
                         while(cur){
-                            std::cout << cur->data << " ";
-                            if (cur->right) stack.push_back(cur->right);
-                            cur=cur->left;
+                            stack.push_back(cur);
+                            cur = cur->left;
                         }
 
                         if (!stack.empty()){
                             cur = stack.back();
                             stack.pop_back();
-                        }   
+                            std::cout << cur->data << " ";
+                            cur = cur->right;
+                        }
+                    }
+
+                    break;
+                }
+                
+                case BinarySearchTree<T>::TRASVERSAL_STRATEGY::PRE_ORDER:{
+                    std::vector<Node*> stack;
+                    Node* cur = bst.root;
+    
+                    while(!stack.empty() || cur){
+                        while(cur){
+                            std::cout << cur->data << " ";
+                            if (cur->right) stack.push_back(cur->right);
+                            cur=cur->left;
+                        } 
+
+                        if(!stack.empty()){
+                            cur = stack.back();
+                            stack.pop_back();
+                        }
                     }
 
                     break;
                 }
 
                 case BinarySearchTree<T>::TRASVERSAL_STRATEGY::POST_ORDER:{
-                    
+                    std::vector<Node*> stack;
+                    Node* cur = bst.root;
+                    Node* lastVisited = nullptr;
+
+                    while(!stack.empty() || cur){
+                        if(cur){
+                            stack.push_back(cur);
+                            cur = cur->left;
+                        }else{
+                            Node* top = stack.back();
+
+                            if(top->right && lastVisited != top->right){
+                                cur = top->right;
+                            }else{
+                                if(!stack.empty()){
+                                    lastVisited = stack.back();
+                                    std::cout << lastVisited->data << " ";
+                                    stack.pop_back();
+                                }
+                            }
+                        }
+                    }
+
+                    break;
                 }
                 case BinarySearchTree<T>::TRASVERSAL_STRATEGY::BFS:{
-                    
+                    std::queue<Node*> queue;
+                    queue.push(bst.root);
+
+                    while(!queue.empty()){
+                        std::size_t size = queue.size();
+                        for(std::size_t i = 0; i < size;++i){
+                            Node* cur = queue.front();
+                            queue.pop();
+                            std::cout << cur->data << " ";
+                            
+                            if(cur->left) queue.push(cur->left);
+                            if(cur->right) queue.push(cur->right);
+                        }
+                    }
+
+                    break;
                 }
             }
 
@@ -182,6 +254,74 @@ class BinarySearchTree{
         Node* root;
         std::size_t _size;
         TRASVERSAL_STRATEGY traversal_strategy;
+
+        void freeElements(){
+            if (_size == 0) return;
+
+            std::vector<Node*> stack;
+            Node* cur = root;
+            Node* prev = nullptr;
+
+            while(!stack.empty() || cur){
+                while(cur){
+                    if(cur->right){
+                        stack.push_back(cur->right);
+                    }
+                    prev = cur;
+                    cur = cur->left;
+                    prev->left = nullptr;
+                    prev->right = nullptr;
+                    delete prev;
+                }
+
+                if(!stack.empty()){
+                    cur = stack.back();
+                    stack.pop_back();
+                }
+            }
+
+            _size = 0;
+            root = nullptr;
+        }
+
+        void copyElements(const BinarySearchTree<T>& other){
+            if(other.root == nullptr){
+                root = nullptr;
+                _size = 0;
+                return;
+            }
+
+            std::vector<std::pair<Node*,Node*>> stack;
+            Node* cur = other.root;
+            Node* copy = new Node(other.root->data);
+            std::pair<Node*,Node*> nodePair;
+            root = copy;
+            _size = other._size;
+           
+            while(!stack.empty() || cur){
+                while(cur){
+                    if(cur->right){
+                        copy->right = new Node(cur->right->data);
+                        stack.push_back({cur->right,copy->right});
+                    }
+                    if(cur->left){
+                        copy->left = new Node(cur->left->data);
+                        copy = copy->left;
+                        cur = cur->left;
+                    }else{
+                        cur = nullptr;
+                    }
+                }
+
+                if (!stack.empty()){
+                    nodePair = stack.back();
+                    cur = nodePair.first;
+                    copy = nodePair.second;
+                    stack.pop_back();
+                    
+                }
+            }
+        }
 
         template<typename U>
         void _insert(U&& data){
@@ -226,5 +366,11 @@ int main(){
     bst.insert(11);
     bst.insert(2);
 
-    std::cout <<bst;
+    std::cout << "PRE ORDER: " << bst << "\n";
+    bst.setTraversalStrategy(BinarySearchTree<int>::IN_ORDER);
+    std::cout << "IN ORDER: " << bst << "\n";
+    bst.setTraversalStrategy(BinarySearchTree<int>::POST_ORDER);
+    std::cout << "POST ORDER: " << bst << "\n";
+    bst.setTraversalStrategy(BinarySearchTree<int>::BFS);
+    std::cout << "BFS: " << bst << "\n";
 }
