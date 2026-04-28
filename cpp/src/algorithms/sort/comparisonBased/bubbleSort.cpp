@@ -1,34 +1,33 @@
-#include "quickSort.h"
+#include "bubbleSort.h"
 
 int main(){
     int n = 10;
-    int k = 2;
     int arr[] = {10, -1, 2, -5, 0, -1, 43, 9, 99, 54};
     
-    quickSort(arr, 0, n-1,k, sortAscending);
+    bubbleSort(arr, 0, n-1, sortAscending);
     printList(arr, n);
     std::cout << "\n";
    
-    quickSort(arr, 0, n-1,k, sortDescending);
+    bubbleSort(arr, 0, n-1, sortDescending);
     printList(arr, n);
     std::cout << "\n";
     
     // only sort the elements at positions 1-3 
-    quickSort(arr, 1, 3,k, sortAscending);
+    bubbleSort(arr, 1, 3, sortAscending);
     printList(arr, n);
     std::cout << "\n";
 
     char strs[] = {'a','c','d','b','a','e','g','p','o','z'};
-    quickSort(strs, 0, n-1,k, sortAscending);
+    bubbleSort(strs, 0, n-1, sortAscending);
     printList(strs, n);
     std::cout << "\n";
    
-    quickSort(strs, 0, n-1,k, sortDescending);
+    bubbleSort(strs, 0, n-1, sortDescending);
     printList(strs, n);
     std::cout << "\n";
     
     // only sort the elements at positions 1-3 
-    quickSort(strs, 1, 3,k, sortAscending);
+    bubbleSort(strs, 1, 3, sortAscending);
     printList(strs, n);
     std::cout << "\n";
 }
