@@ -35,6 +35,12 @@ public class Btree<K extends Comparable<K>, V> {
         _insert(key, value, null, 0);
     }
 
+    public void remove(K key) {
+        if (_size == 0)
+            return;
+
+    }
+
     public int size() {
         return _size;
     }
@@ -91,9 +97,7 @@ public class Btree<K extends Comparable<K>, V> {
             _size++;
         }
 
-        if (checkSplit(parent, childIndex)) {
-            splitChild(parent, childIndex);
-        }
+        checkSplit(parent, childIndex);
     }
 
     // Called when child has MAX_CHILDREN keys
@@ -139,12 +143,13 @@ public class Btree<K extends Comparable<K>, V> {
 
     }
 
-    private boolean checkSplit(Node parent, int childIndex) {
+    private void checkSplit(Node parent, int childIndex) {
         boolean shouldSplit = parent == null
                 ? root.entries.size() == MAX_CHILDREN
                 : parent.children.get(childIndex).entries.size() == MAX_CHILDREN;
 
-        return shouldSplit;
+        if (shouldSplit)
+            splitChild(parent, childIndex);
     }
 
     private V _search(K key, Node node) {
@@ -162,6 +167,162 @@ public class Btree<K extends Comparable<K>, V> {
             return null;
         else
             return _search(key, node.children.get(i));
+    }
+
+    private void _remove(K key, Node parent, int childIndex) {
+        Node child = parent == null ? root : parent.children.get(childIndex);
+
+        int i = 0;
+        for (; i < child.entries.size(); ++i) {
+            var entry = child.entries.get(i);
+            if (key.compareTo(entry.key) <= 0)
+                break;
+        }
+
+        int compareRes = i < child.entries.size() ? key.compareTo(child.entries.get(i).key) : 1;
+        if (compareRes == 0) {
+            // key was found
+            if (child.leaf) {
+                deleteLeafNode(parent, childIndex, i);
+            } else {
+                deleteInternalNode(parent, childIndex, i);
+            }
+        } else if (!child.leaf) {
+            _remove(key, child, i);
+        }
+
+    }
+
+    private void deleteInternalNode(Node parent, int childIndex, int keyIndex) {
+        Node child = parent == null ? root : parent.children.get(childIndex);
+
+        child.entries.remove(keyIndex);
+
+        int MIN_KEYS = MIN_CHILDREN - 1;
+
+        if (child.entries.size() >= MIN_KEYS) {
+            _size--;
+            return;
+        }
+
+        if (child == root) {
+            _size--;
+            if (_size == 0)
+                root = null;
+            return;
+        }
+
+    }
+
+    // Deletes key from leaf node
+    private void deleteLeafNode(Node parent, int childIndex, int keyIndex) {
+        Node child = parent == null ? root : parent.children.get(childIndex);
+
+        child.entries.remove(keyIndex);
+
+        int MIN_KEYS = MIN_CHILDREN - 1;
+
+        if (child.entries.size() >= MIN_KEYS) {
+            _size--;
+            return;
+        }
+
+        if (child == root) {
+            _size--;
+            if (_size == 0)
+                root = null;
+            return;
+        }
+
+        // check predecessor
+        if (canBorrowPredecessorKey(parent, childIndex)) {
+            borrowPredecessorKey(parent, childIndex);
+        }
+        // check successor
+        else if (canBorrowSuccessorKey(parent, childIndex)) {
+            borrowSuccessorKey(parent, childIndex);
+        }
+        // merge children
+        else {
+            mergeChildren(parent, childIndex);
+        }
+
+    }
+
+    private boolean canBorrowPredecessorKey(Node parent, int childIndex) {
+        int MIN_KEYS = MIN_CHILDREN - 1;
+        return parent != null && childIndex > 0
+                && parent.children.get(childIndex - 1).entries.size() > MIN_KEYS;
+    }
+
+    private boolean canBorrowSuccessorKey(Node parent, int childIndex) {
+        int MIN_KEYS = MIN_CHILDREN - 1;
+        return parent != null && childIndex < parent.children.size() - 1
+                && parent.children.get(childIndex + 1).entries.size() > MIN_KEYS;
+    }
+
+    private void borrowPredecessorKey(Node parent, int childIndex) {
+        Node lender = parent.children.get(childIndex - 1);
+        Node receiver = parent.children.get(childIndex);
+
+        receiver.entries.add(0, parent.entries.get(childIndex));
+        parent.entries.set(childIndex, lender.entries.getLast());
+        lender.entries.removeLast();
+    }
+
+    private void borrowSuccessorKey(Node parent, int childIndex) {
+        Node lender = parent.children.get(childIndex + 1);
+        Node receiver = parent.children.get(childIndex);
+
+        receiver.entries.addLast(parent.entries.get(childIndex));
+        parent.entries.set(childIndex, lender.entries.getFirst());
+        lender.entries.removeFirst();
+    }
+
+    // Only called if parent is not null
+    private void mergeChildren(Node parent, int childIndex) {
+        Node merged;
+        Node other;
+
+        // Node has a right sibling
+        if (childIndex < parent.children.size() - 1) {
+            merged = parent.children.get(childIndex);
+            other = parent.children.get(childIndex + 1);
+
+            merged.entries.add(parent.entries.get(childIndex));
+
+            parent.entries.remove(childIndex);
+            parent.children.remove(childIndex + 1);
+        }
+        // Node has a left sibling only
+        else {
+            merged = parent.children.get(childIndex - 1);
+            other = parent.children.get(childIndex);
+
+            merged.entries.add(parent.entries.get(childIndex - 1));
+
+            parent.entries.remove(childIndex - 1);
+            parent.children.remove(childIndex);
+        }
+
+        for (int i = 0; i < other.entries.size(); ++i) {
+            merged.entries.add(other.entries.get(i));
+        }
+
+        if (!merged.leaf) {
+            for (int i = 0; i < other.children.size(); ++i) {
+                merged.children.add(other.children.get(i));
+            }
+
+        }
+
+        // if (parent == root) {
+        // if (parent.entries.size() == 0) {
+        // Node newRoot = root.children.get(0);
+        // root.children.clear();
+        // root = newRoot;
+        // }
+        // }
     }
 
     @Override
