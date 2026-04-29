@@ -39,6 +39,7 @@ public class Btree<K extends Comparable<K>, V> {
         if (_size == 0)
             return;
 
+        _remove(key,null,0);
     }
 
     public int size() {
@@ -191,6 +192,36 @@ public class Btree<K extends Comparable<K>, V> {
             _remove(key, child, i);
         }
 
+        checkRebalance(parent,childIndex);
+    }
+
+    private void checkRebalance(Node parent, int childIndex){
+        if(parent !=null && !hasMinKeys(parent.children.get(childIndex))){
+            // rebalances everthing except root
+            rebalanceNode(parent,childIndex);
+
+            if (parent == root && parent.entries.isEmpty()) {
+                // height of tree shrunk by 1
+                Node newRoot = root.children.get(0);
+                root.children.clear();
+                root = newRoot;
+            }
+        }
+    }
+
+    private void rebalanceNode(Node parent, int childIndex){
+        // check predecessor
+        if (canBorrowFromLeftSibling(parent, childIndex)) {
+            borrowLeftSiblingKey(parent, childIndex);
+        }
+        // check successor
+        else if (canBorrowFromRightSibling(parent, childIndex)) {
+            borrowRightSiblingKey(parent, childIndex);
+        }
+        // merge children
+        else {
+            mergeChildren(parent, childIndex);
+        }
     }
 
     private void deleteInternalNode(Node parent, int childIndex, int keyIndex) {
@@ -198,85 +229,91 @@ public class Btree<K extends Comparable<K>, V> {
 
         child.entries.remove(keyIndex);
 
-        int MIN_KEYS = MIN_CHILDREN - 1;
+        _size--;
 
-        if (child.entries.size() >= MIN_KEYS) {
-            _size--;
-            return;
+        // Rebalances every node up to predecessor itself
+        Entry entry = getPredecessor(child.children.get(keyIndex));
+        child.entries.add(keyIndex,entry);
+
+        if(!hasMinKeys(child.children.get(keyIndex))){
+            rebalanceNode(child,keyIndex);
         }
-
-        if (child == root) {
-            _size--;
-            if (_size == 0)
-                root = null;
-            return;
-        }
-
     }
 
-    // Deletes key from leaf node
     private void deleteLeafNode(Node parent, int childIndex, int keyIndex) {
         Node child = parent == null ? root : parent.children.get(childIndex);
 
         child.entries.remove(keyIndex);
 
-        int MIN_KEYS = MIN_CHILDREN - 1;
+        _size--;
 
-        if (child.entries.size() >= MIN_KEYS) {
-            _size--;
-            return;
+        if (child == root && _size == 0) {
+            root = null;
         }
-
-        if (child == root) {
-            _size--;
-            if (_size == 0)
-                root = null;
-            return;
-        }
-
-        // check predecessor
-        if (canBorrowPredecessorKey(parent, childIndex)) {
-            borrowPredecessorKey(parent, childIndex);
-        }
-        // check successor
-        else if (canBorrowSuccessorKey(parent, childIndex)) {
-            borrowSuccessorKey(parent, childIndex);
-        }
-        // merge children
-        else {
-            mergeChildren(parent, childIndex);
-        }
-
     }
 
-    private boolean canBorrowPredecessorKey(Node parent, int childIndex) {
-        int MIN_KEYS = MIN_CHILDREN - 1;
+    private Entry getPredecessor(Node parent) {
+        if(parent.leaf) return parent.entries.removeLast();
+
+        Entry predecessor = parent.children.getLast().leaf ? parent.children.getLast().entries.removeLast() : getPredecessor(parent.children.getLast());
+
+        if (hasMinKeys(parent.children.getLast())) return predecessor;
+
+        if(canBorrowFromLeftSibling(parent,parent.children.size() -1)){
+            borrowLeftSiblingKey(parent,parent.children.size() -1);
+        }else{
+            mergeChildren(parent,parent.children.size() -1);
+        }
+
+        return predecessor;
+    }
+
+    private boolean hasMinKeys(Node node){
+        return node.entries.size() >= MIN_CHILDREN -1;
+    }
+
+    private boolean canLendKey(Node node){
+        return node.entries.size() > MIN_CHILDREN - 1;
+    }
+
+    private boolean canBorrowFromLeftSibling(Node parent, int childIndex) {
         return parent != null && childIndex > 0
-                && parent.children.get(childIndex - 1).entries.size() > MIN_KEYS;
+                && canLendKey(parent.children.get(childIndex - 1));
     }
 
-    private boolean canBorrowSuccessorKey(Node parent, int childIndex) {
-        int MIN_KEYS = MIN_CHILDREN - 1;
+    private boolean canBorrowFromRightSibling(Node parent, int childIndex) {
         return parent != null && childIndex < parent.children.size() - 1
-                && parent.children.get(childIndex + 1).entries.size() > MIN_KEYS;
+                && canLendKey(parent.children.get(childIndex + 1));
     }
 
-    private void borrowPredecessorKey(Node parent, int childIndex) {
+    private void borrowLeftSiblingKey(Node parent, int childIndex) {
         Node lender = parent.children.get(childIndex - 1);
         Node receiver = parent.children.get(childIndex);
 
-        receiver.entries.add(0, parent.entries.get(childIndex));
-        parent.entries.set(childIndex, lender.entries.getLast());
+        int entryIndex = Math.min(childIndex,parent.entries.size() -1);
+
+        receiver.entries.add(0, parent.entries.get(entryIndex));
+        parent.entries.set(entryIndex, lender.entries.getLast());
         lender.entries.removeLast();
+
+        if (!lender.leaf) {
+            receiver.children.addFirst(lender.children.getLast());
+            lender.children.removeLast();
+        }
     }
 
-    private void borrowSuccessorKey(Node parent, int childIndex) {
+    private void borrowRightSiblingKey(Node parent, int childIndex) {
         Node lender = parent.children.get(childIndex + 1);
         Node receiver = parent.children.get(childIndex);
 
         receiver.entries.addLast(parent.entries.get(childIndex));
         parent.entries.set(childIndex, lender.entries.getFirst());
         lender.entries.removeFirst();
+
+        if (!lender.leaf) {
+            receiver.children.addLast(lender.children.getFirst());
+            lender.children.removeFirst();
+        }
     }
 
     // Only called if parent is not null
@@ -313,16 +350,7 @@ public class Btree<K extends Comparable<K>, V> {
             for (int i = 0; i < other.children.size(); ++i) {
                 merged.children.add(other.children.get(i));
             }
-
         }
-
-        // if (parent == root) {
-        // if (parent.entries.size() == 0) {
-        // Node newRoot = root.children.get(0);
-        // root.children.clear();
-        // root = newRoot;
-        // }
-        // }
     }
 
     @Override
@@ -361,12 +389,23 @@ public class Btree<K extends Comparable<K>, V> {
     }
 
     public static void main(String[] args) {
-        Btree<Integer, Integer> btree = new Btree<>(4);
+        Btree<Integer, Integer> btree = new Btree<>(3);
 
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 1; i <= 20; ++i) {
             btree.insert(i, i);
         }
         System.out.println(btree);
+        System.out.println("\n");
+
+        btree.remove(12);
+        System.out.println(btree);
+        System.out.println("\n");
+
+        btree.remove(4);
+        System.out.println(btree);
+        System.out.println("\n");
+
+        System.out.println(btree.size());
     }
 
 }
