@@ -28,43 +28,22 @@ public class Heap<E> {
         bubbleUp(heap.size() - 1);
     }
 
-    public static <E> List<E> sort(List<E> list,Comparator<E> comp){
-        if(list.size() <= 1) return list;
+    public List<E> sort(){
+        if(heap.size() <= 1) return heap;
 
-        int startIndex = Math.floorDiv(list.size(),2) - 1;
+        ArrayList<E> copy = new ArrayList<>(heap);
 
-        for(int i = startIndex; i >= 0; --i){
-            int parentIndex = i;
-            int leftChildIndex = i * 2 + 1;
-            int rightChildIndex = i * 2 + 2;
-
-            // bubble down
-            while (parentIndex < list.size()) {
-                int minChildIndex = parentIndex;
-
-                // finds the index of the minimum value between current node, left child and right child
-                if (leftChildIndex < list.size() && comp.compare(list.get(minChildIndex), list.get(leftChildIndex)) > 0)
-                    minChildIndex = leftChildIndex;
-                if (rightChildIndex < list.size() && comp.compare(list.get(minChildIndex), list.get(rightChildIndex)) > 0)
-                    minChildIndex = rightChildIndex;
-
-                if (minChildIndex != parentIndex) {
-                    E tmp = list.get(parentIndex);
-                    list.set(parentIndex,list.get(minChildIndex));
-                    list.set(minChildIndex,tmp);
-
-                    parentIndex = minChildIndex;
-                    leftChildIndex = parentIndex * 2 + 1;
-                    rightChildIndex = parentIndex * 2 + 2;
-                } else
-                    break;
-            }
+        // Sort
+        ArrayList<E> sorted = new ArrayList<>(heap.size());
+        while (!heap.isEmpty()){
+            sorted.add(this.pop());
         }
 
-        return list;
+        heap = copy;
+        return sorted;
     }
 
-    public void heapSort(E... elements){
+    public void heapify(E... elements){
         if(elements.length <= 1){
             heap.addAll(List.of(elements));
             return;
@@ -140,16 +119,19 @@ public class Heap<E> {
 
     public static void main(String[] args) {
         Heap<Integer> heap = new Heap<>((a, b) -> a - b);
-        PriorityQueue<Integer> pq = new PriorityQueue<>();
+        Heap<Integer> heap2 = new Heap<>((a, b) -> b - a);
 
         for (int i = 0; i < 10; ++i) {
             int randInt = (int) (Math.random() * 100 - 50);
-            pq.add(randInt);
+            heap2.insert(randInt);
             heap.insert(randInt);
         }
 
-        while (!pq.isEmpty()) {
-            System.out.println(pq.poll());
+        System.out.println(heap.sort());
+        System.out.println(heap2.sort());
+
+        while (heap2.size() > 0) {
+            System.out.println(heap2.pop());
             System.out.println(heap.pop());
         }
     }
