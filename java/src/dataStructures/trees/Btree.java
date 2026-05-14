@@ -1,4 +1,4 @@
-package tree;
+package dataStructures.trees;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -201,7 +201,7 @@ public class Btree<K extends Comparable<K>, V> {
             rebalanceNode(parent,childIndex);
 
             if (parent == root && parent.entries.isEmpty()) {
-                // height of tree shrunk by 1
+                // height of dataStructures.tree shrunk by 1
                 Node newRoot = root.children.get(0);
                 root.children.clear();
                 root = newRoot;
