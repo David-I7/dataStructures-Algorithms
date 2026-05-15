@@ -1,10 +1,10 @@
-package dataStructures.graphs;
+package dataStructures.graphs.undirected;
 
 import dataStructures.util.Tuple;
 
 import java.util.*;
 
-public class WeightedAdjacencyMatrix<V,W> implements WeightedGraph<V,W>{
+public class WeightedAdjacencyMatrix<V,W> implements UndirectedWeightedGraph<V,W> {
 
     private final List<List<Tuple<V,W>>> adjacencyMatrix = new ArrayList<>();
     private final Map<V,Integer> vertexToIndexMap = new HashMap<>();

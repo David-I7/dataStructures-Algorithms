@@ -1,6 +1,6 @@
 package algorithms.graphs;
 
-import dataStructures.graphs.WeightedAdjacencyList;
+import dataStructures.graphs.undirected.WeightedAdjacencyList;
 import dataStructures.graphs.WeightedGraph;
 
 import java.util.HashSet;

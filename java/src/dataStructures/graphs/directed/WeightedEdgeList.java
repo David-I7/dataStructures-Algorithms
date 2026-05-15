@@ -1,4 +1,4 @@
-package dataStructures.graphs;
+package dataStructures.graphs.directed;
 
 import dataStructures.util.Tuple;
 
@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class WeightedEdgeList<V,W> implements WeightedGraph<V,W>{
+public class WeightedEdgeList<V,W> implements DirectedWeightedGraph<V,W> {
 
     private List<Tuple<V,Tuple<V,W>>> edgeList = new ArrayList<>();
     private Set<V> vertices = new HashSet<>();
@@ -37,17 +37,15 @@ public class WeightedEdgeList<V,W> implements WeightedGraph<V,W>{
         if(!vertices.contains(source)) addVertex(source);
         if(!vertices.contains(target)) addVertex(target);
 
-        var prevEdges =
+        var prevEdge =
                 edgeList.stream()
                         .filter(edge-> isEdge(source,target,edge))
-                        .toList();
+                        .findFirst();
 
-        if(prevEdges.isEmpty()){
+        if(prevEdge.isEmpty()){
             edgeList.add(new Tuple<>(source,new Tuple<>(target,weight)));
-            edgeList.add(new Tuple<>(target,new Tuple<>(source,weight)));
         }else{
-            edgeList.get(0).getSecond().setSecond(weight);
-            edgeList.get(1).getSecond().setSecond(weight);
+            prevEdge.get().getSecond().setSecond(weight);
         }
     }
 
@@ -65,7 +63,7 @@ public class WeightedEdgeList<V,W> implements WeightedGraph<V,W>{
     public void removeVertex(V source) {
         vertices.remove(source);
         edgeList = edgeList.stream()
-                .filter(edge -> !edge.getFirst().equals(source) && !edge.getSecond().getFirst().equals(source))
+                .filter(edge -> !edge.getFirst().equals(source))
                 .toList();
     }
 
@@ -80,9 +78,7 @@ public class WeightedEdgeList<V,W> implements WeightedGraph<V,W>{
 
     private boolean isEdge(V source, V target, Tuple<V,Tuple<V,W>> edge){
         return (edge.getFirst().equals(source) &&
-                edge.getSecond().getFirst().equals(target)) ||
-                (edge.getFirst().equals(target) &&
-                edge.getSecond().getFirst().equals(source));
+                edge.getSecond().getFirst().equals(target));
     }
 
     public static void main(String[] args) {

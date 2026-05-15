@@ -1,10 +1,10 @@
-package dataStructures.graphs;
+package dataStructures.graphs.undirected;
 
 import dataStructures.util.Tuple;
 
 import java.util.*;
 
-public class WeightedAdjacencyList<V,W> implements WeightedGraph<V,W>{
+public class WeightedAdjacencyList<V,W> implements UndirectedWeightedGraph<V,W> {
 
     private Map<V, List<Tuple<V,W>>> adjacencyList = new HashMap<>();
 
@@ -54,13 +54,21 @@ public class WeightedAdjacencyList<V,W> implements WeightedGraph<V,W>{
     @Override
     // O(V) - V = number of vertices
     public void removeEdge(V source, V target){
-        List<Tuple<V,W>> edges = adjacencyList.get(source);
-        if(edges == null) return;
+        List<Tuple<V,W>> sourceEdges = adjacencyList.get(source);
+        List<Tuple<V,W>> targetEdges = adjacencyList.get(target);
+        if(sourceEdges == null || targetEdges == null) return;
 
-        for(int i = 0; i < edges.size();++i){
-            if(edges.get(i).getFirst().equals(target)){
-                swap(edges,i,edges.size()-1);
-                edges.removeLast();
+        for(int i = 0; i < sourceEdges.size();++i){
+            if(sourceEdges.get(i).getFirst().equals(target)){
+                swap(sourceEdges,i,sourceEdges.size()-1);
+                sourceEdges.removeLast();
+                break;
+            }
+        }
+        for(int i = 0; i < targetEdges.size();++i){
+            if(targetEdges.get(i).getFirst().equals(source)){
+                swap(targetEdges,i,targetEdges.size()-1);
+                targetEdges.removeLast();
                 break;
             }
         }
@@ -72,7 +80,7 @@ public class WeightedAdjacencyList<V,W> implements WeightedGraph<V,W>{
         List<Tuple<V,W>> edges = adjacencyList.remove(source);
         if(edges == null) return;
 
-        edges.forEach(edge -> removeEdge(edge.getFirst(),source));
+        edges.forEach(edge -> _removeEdge(edge.getFirst(),source));
     }
 
     @Override
@@ -99,6 +107,16 @@ public class WeightedAdjacencyList<V,W> implements WeightedGraph<V,W>{
             if(edge.getFirst().equals(target)) return edge;
         }
         return null;
+    }
+
+    private void _removeEdge(V source, V target){
+        List<Tuple<V,W>> edges = adjacencyList.get(source);
+        for(int i = 0; i < edges.size();++i){
+            if(edges.get(i).equals(target)){
+                swap(edges,i,edges.size() -1);
+                edges.removeLast();
+            }
+        }
     }
 
     public static void main(String[] args) {
