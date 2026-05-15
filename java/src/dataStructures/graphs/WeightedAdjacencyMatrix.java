@@ -6,16 +6,18 @@ import java.util.*;
 
 public class WeightedAdjacencyMatrix<V,W> implements WeightedGraph<V,W>{
 
-    private List<List<Tuple<V,W>>> adjacencyMatrix = new ArrayList<>();
-    private Map<V,Integer> vertexToIndexMap = new HashMap<>();
+    private final List<List<Tuple<V,W>>> adjacencyMatrix = new ArrayList<>();
+    private final Map<V,Integer> vertexToIndexMap = new HashMap<>();
 
     @Override
+    // O(1)
     public boolean containsVertex(V vertex) {
         Integer index = vertexToIndexMap.get(vertex);
         return index != null;
     }
 
     @Override
+    // O(1)
     public boolean containsEdge(V source, V target) {
         if(!containsVertex(source) || !containsVertex(target)) return false;
 
@@ -26,6 +28,7 @@ public class WeightedAdjacencyMatrix<V,W> implements WeightedGraph<V,W>{
     }
 
     @Override
+    // O(V)
     public void addVertex(V vertex) {
         if(containsVertex(vertex)) return;
 
@@ -40,6 +43,7 @@ public class WeightedAdjacencyMatrix<V,W> implements WeightedGraph<V,W>{
     }
 
     @Override
+    // O(1) if edges exist, otherwise O(V)
     public void putEdge(V source, V target, W weight) {
         if(!containsVertex(source)) addVertex(source);
         if(!containsVertex(target)) addVertex(target);
@@ -63,6 +67,7 @@ public class WeightedAdjacencyMatrix<V,W> implements WeightedGraph<V,W>{
     }
 
     @Override
+    // O(1)
     public void removeEdge(V source, V target) {
         if(!containsVertex(source) || !containsVertex(target)) return;
 
@@ -74,6 +79,7 @@ public class WeightedAdjacencyMatrix<V,W> implements WeightedGraph<V,W>{
     }
 
     @Override
+    // O(V)
     public void removeVertex(V source) {
         if(!containsVertex(source)) return;
 
