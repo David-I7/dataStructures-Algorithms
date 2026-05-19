@@ -16,4 +16,10 @@ public interface Graph<V> {
     void removeVertex(V source);
 
     List<V> getEdges(V source);
+
+    List<V> getVertices();
+
+    int edgeCount();
+
+    int verticesCount();
 }

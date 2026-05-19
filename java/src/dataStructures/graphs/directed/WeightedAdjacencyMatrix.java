@@ -1,12 +1,8 @@
 package dataStructures.graphs.directed;
 
-import dataStructures.graphs.WeightedGraph;
 import dataStructures.util.Tuple;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class WeightedAdjacencyMatrix<V,W> implements DirectedWeightedGraph<V,W> {
 
@@ -105,6 +101,23 @@ public class WeightedAdjacencyMatrix<V,W> implements DirectedWeightedGraph<V,W> 
     public List<Tuple<V, W>> getEdges(V source) {
         if(!containsVertex(source)) return null;
         return adjacencyMatrix.get(vertexToIndexMap.get(source));
+    }
+
+    @Override
+    public List<V> getVertices() {
+        return vertexToIndexMap.keySet().stream().toList();
+    }
+
+    @Override
+    public int edgeCount() {
+        return adjacencyMatrix.stream()
+                .reduce(0l,(acc,row)-> acc + row.stream().filter(Objects::nonNull).count(), Long::sum)
+                .intValue();
+    }
+
+    @Override
+    public int verticesCount() {
+        return vertexToIndexMap.size();
     }
 
     private <T> void swap(List<T> list, int i, int j){

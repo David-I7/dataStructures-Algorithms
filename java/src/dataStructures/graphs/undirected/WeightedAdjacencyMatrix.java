@@ -111,6 +111,23 @@ public class WeightedAdjacencyMatrix<V,W> implements UndirectedWeightedGraph<V,W
         return adjacencyMatrix.get(vertexToIndexMap.get(source));
     }
 
+    @Override
+    public List<V> getVertices() {
+        return vertexToIndexMap.keySet().stream().toList();
+    }
+
+    @Override
+    public int edgeCount() {
+        return adjacencyMatrix.stream()
+                .reduce(0l,(acc,row) -> acc + row.stream().filter(Objects::nonNull).count(),Long::sum)
+                .intValue();
+    }
+
+    @Override
+    public int verticesCount() {
+        return vertexToIndexMap.size();
+    }
+
     private <T> void swap(List<T> list, int i, int j){
         var tmp = list.get(i);
         list.set(i,list.get(j));

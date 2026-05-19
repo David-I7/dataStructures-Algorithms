@@ -80,6 +80,21 @@ public class WeightedAdjacencyList<V,W> implements DirectedWeightedGraph<V,W> {
         return Collections.unmodifiableList(adjacencyList.get(source));
     }
 
+    @Override
+    public List<V> getVertices() {
+        return adjacencyList.keySet().stream().toList();
+    }
+
+    @Override
+    public int edgeCount() {
+        return adjacencyList.values().stream().reduce(0,(acc,b) -> acc + b.size(), Integer::sum);
+    }
+
+    @Override
+    public int verticesCount() {
+        return adjacencyList.size();
+    }
+
     private <T> void swap(List<T> list, int i, int j){
         var tmp = list.get(i);
         list.set(i,list.get(j));

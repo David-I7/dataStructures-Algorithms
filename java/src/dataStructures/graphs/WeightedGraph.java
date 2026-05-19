@@ -18,5 +18,11 @@ public interface WeightedGraph<V,W> {
     void removeVertex(V source);
 
     List<Tuple<V,W>> getEdges(V source);
+
+    List<V> getVertices();
+
+    int edgeCount();
+
+    int verticesCount();
 }
 

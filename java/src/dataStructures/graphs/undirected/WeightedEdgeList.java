@@ -79,6 +79,21 @@ public class WeightedEdgeList<V,W> implements UndirectedWeightedGraph<V,W> {
                 .toList();
     }
 
+    @Override
+    public List<V> getVertices() {
+        return vertices.stream().toList();
+    }
+
+    @Override
+    public int edgeCount() {
+        return edgeList.size();
+    }
+
+    @Override
+    public int verticesCount() {
+        return vertices.size();
+    }
+
     private boolean isEdge(V source, V target, Tuple<V,Tuple<V,W>> edge){
         return (edge.getFirst().equals(source) &&
                 edge.getSecond().getFirst().equals(target)) ||
