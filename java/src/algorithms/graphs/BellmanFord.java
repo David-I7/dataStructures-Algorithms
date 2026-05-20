@@ -10,7 +10,7 @@ import java.util.Map;
 public class BellmanFord {
 
     public <V> void perform(WeightedGraph<V,Integer> graph,V source){
-        List<V> vertices = graph.getVertices();
+        List<V> vertices = graph.vertices();
         Map<V,Integer> result = new HashMap<>();
 
         vertices.forEach(v -> result.put(v,Integer.MAX_VALUE));
@@ -21,7 +21,7 @@ public class BellmanFord {
             boolean hasChanged = false;
             for(var vertex: vertices){
                 var curDistance = result.get(vertex);
-                for (var edge : graph.getEdges(vertex)){
+                for (var edge : graph.edges(vertex)){
                     if(curDistance + edge.getSecond() < result.get(edge.getFirst())){
                         result.put(edge.getFirst(), curDistance + edge.getSecond());
                         hasChanged = true;
@@ -34,7 +34,7 @@ public class BellmanFord {
 
         for(var vertex: vertices){
             var curDistance = result.get(vertex);
-            for (var edge : graph.getEdges(vertex)){
+            for (var edge : graph.edges(vertex)){
                 if(curDistance + edge.getSecond() < result.get(edge.getFirst())){
                     result.put(edge.getFirst(), Integer.MIN_VALUE);
                 }

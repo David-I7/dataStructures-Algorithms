@@ -3,10 +3,7 @@ package dataStructures.graphs.undirected;
 import dataStructures.graphs.WeightedGraph;
 import dataStructures.util.Tuple;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class WeightedEdgeList<V,W> implements UndirectedWeightedGraph<V,W> {
 
@@ -72,7 +69,7 @@ public class WeightedEdgeList<V,W> implements UndirectedWeightedGraph<V,W> {
 
     @Override
     // O(V + E)
-    public List<Tuple<V, W>> getEdges(V source) {
+    public List<Tuple<V, W>> edges(V source) {
         return edgeList.stream()
                 .filter((edge) -> edge.getFirst().equals(source))
                 .map(edge->edge.getSecond())
@@ -80,7 +77,12 @@ public class WeightedEdgeList<V,W> implements UndirectedWeightedGraph<V,W> {
     }
 
     @Override
-    public List<V> getVertices() {
+    public List<Tuple<V, Tuple<V, W>>> edges() {
+        return Collections.unmodifiableList(edgeList);
+    }
+
+    @Override
+    public List<V> vertices() {
         return vertices.stream().toList();
     }
 

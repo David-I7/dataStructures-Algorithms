@@ -21,7 +21,7 @@ public class DijkrasAlgorithm {
             result.add(top);
             V cur = top.getSecond().getFirst();
             visited.add(cur);
-            for(var edge: graph.getEdges(cur)){
+            for(var edge: graph.edges(cur)){
                 if(visited.contains(edge.getFirst())) continue;
                 heap.insert(new Tuple<>(cur,edge));
             }

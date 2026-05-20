@@ -22,7 +22,7 @@ public class BFSAlgorithm {
             path.append(vertex);
             path.append(" -> ");
 
-            for(var edge: graph.getEdges(vertex)){
+            for(var edge: graph.edges(vertex)){
                 if(visited.contains(edge.getFirst())) continue;
                 visited.add(edge.getFirst());
                 queue.add(edge.getFirst());

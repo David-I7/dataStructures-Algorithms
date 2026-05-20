@@ -1,5 +1,7 @@
 package dataStructures.graphs;
 
+import dataStructures.util.Tuple;
+
 import java.util.List;
 
 public interface Graph<V> {
@@ -15,9 +17,11 @@ public interface Graph<V> {
 
     void removeVertex(V source);
 
-    List<V> getEdges(V source);
+    List<V> edges(V source);
 
-    List<V> getVertices();
+    List<Tuple<V,V>> edges();
+
+    List<V> vertices();
 
     int edgeCount();
 

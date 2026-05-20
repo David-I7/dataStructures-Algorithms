@@ -23,7 +23,7 @@ public class DFSAlgorithm {
         path.append(cur);
         path.append(" -> ");
 
-        var edges = graph.getEdges(cur);
+        var edges = graph.edges(cur);
 
         for(var edge: edges){
             if(visited.contains(edge.getFirst())) continue;
@@ -46,7 +46,7 @@ public class DFSAlgorithm {
             path.append(vertex);
             path.append(" -> ");
 
-            for(var edge: graph.getEdges(vertex)){
+            for(var edge: graph.edges(vertex)){
                 if(visited.contains(edge.getFirst())) continue;
                 visited.add(edge.getFirst());
                 stack.add(edge.getFirst());

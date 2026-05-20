@@ -98,13 +98,21 @@ public class WeightedAdjacencyMatrix<V,W> implements DirectedWeightedGraph<V,W> 
     }
 
     @Override
-    public List<Tuple<V, W>> getEdges(V source) {
+    public List<Tuple<V, W>> edges(V source) {
         if(!containsVertex(source)) return null;
         return adjacencyMatrix.get(vertexToIndexMap.get(source));
     }
 
     @Override
-    public List<V> getVertices() {
+    public List<Tuple<V, Tuple<V, W>>> edges() {
+        return vertexToIndexMap.entrySet().stream()
+                .map(entry-> adjacencyMatrix.get(entry.getValue()).stream().filter(Objects::nonNull).map(edge-> new Tuple<>(entry.getKey(),edge)).toList())
+                .flatMap(List::stream)
+                .toList();
+    }
+
+    @Override
+    public List<V> vertices() {
         return vertexToIndexMap.keySet().stream().toList();
     }
 

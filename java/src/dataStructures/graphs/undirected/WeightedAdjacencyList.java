@@ -85,12 +85,20 @@ public class WeightedAdjacencyList<V,W> implements UndirectedWeightedGraph<V,W> 
 
     @Override
     // O(1)
-    public List<Tuple<V, W>> getEdges(V source) {
+    public List<Tuple<V, W>> edges(V source) {
         return Collections.unmodifiableList(adjacencyList.get(source));
     }
 
     @Override
-    public List<V> getVertices() {
+    public List<Tuple<V, Tuple<V, W>>> edges() {
+        return adjacencyList.entrySet().stream()
+                .map(entry -> entry.getValue().stream().map(edge -> new Tuple<>(entry.getKey(),edge)).toList())
+                .flatMap(List::stream)
+                .toList();
+    }
+
+    @Override
+    public List<V> vertices() {
         return adjacencyList.keySet().stream().toList();
     }
 
