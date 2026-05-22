@@ -18,22 +18,23 @@ public class PrimsAlgorithm {
 
         while (minHeap.size() > 0){
             var edge = minHeap.pop();
-            var node = edge.getSecond().getFirst();
+            var edgeTo = edge.getSecond().getFirst();
+            var edgeFrom = edge.getFirst();
 
-            if(visited.contains(node)) continue;
+            if(visited.contains(edgeTo)) continue;
 
             if(!visited.isEmpty()) {
-                var toList = minSpanningTree.computeIfAbsent(node, (k) -> new ArrayList<>());
-                var fromList = minSpanningTree.computeIfAbsent(edge.getFirst(), (k) -> new ArrayList<>());
+                var toList = minSpanningTree.computeIfAbsent(edgeTo, (k) -> new ArrayList<>());
+                var fromList = minSpanningTree.computeIfAbsent(edgeFrom, (k) -> new ArrayList<>());
 
                 fromList.add(edge.getSecond());
-                toList.add(new Tuple<>(node,edge.getSecond().getSecond()));
+                toList.add(new Tuple<>(edgeFrom,edge.getSecond().getSecond()));
             }
-            visited.add(node);
+            visited.add(edgeTo);
 
-            for(var e: graph.edges(node)){
+            for(var e: graph.edges(edgeTo)){
                 if(visited.contains(e.getFirst())) continue;
-                minHeap.insert(new Tuple<>(node,e));
+                minHeap.insert(new Tuple<>(edgeTo,e));
             }
 
         }

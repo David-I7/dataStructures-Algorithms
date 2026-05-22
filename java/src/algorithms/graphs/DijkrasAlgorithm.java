@@ -8,41 +8,54 @@ import dataStructures.util.Tuple;
 import java.util.*;
 
 public class DijkrasAlgorithm {
-    public <V> List<Tuple<V,Tuple<V,Integer>>> perform(WeightedGraph<V,Integer> graph, V start)  {
-        List<Tuple<V,Tuple<V,Integer>>> result = new ArrayList<>();
+    public <V> Map<V,Integer> perform(WeightedGraph<V,Integer> graph, V start)  {
+        Map<V,Integer> distances = new HashMap<>();
+        var vertices = graph.vertices();
+
+        for(var v: vertices){
+            distances.put(v,Integer.MAX_VALUE);
+        }
+
+        distances.put(start,0);
+
         Heap<Tuple<V,Tuple<V,Integer>>> heap = new Heap<>((a, b) -> a.getSecond().getSecond().compareTo(b.getSecond().getSecond()));
         Set<V> visited = new HashSet<>();
 
-        heap.insert(new Tuple<>(null,new Tuple<>(start,0)));
+        heap.insert(new Tuple<>(start,new Tuple<>(start,0)));
         while (heap.size() > 0){
             var top = heap.pop();
-            if(visited.contains(top.getSecond().getFirst())) continue;
+            V edgeTo = top.getSecond().getFirst();
+            int distance = top.getSecond().getSecond();
 
-            result.add(top);
-            V cur = top.getSecond().getFirst();
-            visited.add(cur);
-            for(var edge: graph.edges(cur)){
+            if(visited.contains(edgeTo)) continue;
+
+            visited.add(edgeTo);
+            for(var edge: graph.edges(edgeTo)){
                 if(visited.contains(edge.getFirst())) continue;
-                heap.insert(new Tuple<>(cur,edge));
+
+                int curDistance = distance + edge.getSecond();
+                int prevDistance = distances.get(edge.getFirst());
+                if(curDistance < prevDistance){
+                    distances.put(edge.getFirst(),curDistance);
+                    heap.insert(new Tuple<>(edgeTo,new Tuple<>(edge.getFirst(),curDistance)));
+                }
             }
         }
 
-        return result;
+        return distances;
     }
 
     public static void main(String[] args) {
         DijkrasAlgorithm da = new DijkrasAlgorithm();
 
         WeightedGraph<Character,Integer> g= new WeightedEdgeList<>();
-        g.putEdge('a','b',4);
+        g.putEdge('a','b',6);
         g.putEdge('a','c',2);
-        g.putEdge('b','c',3);
-        g.putEdge('b','d',2);
-        g.putEdge('b','e',3);
-        g.putEdge('c','b',1);
-        g.putEdge('c','d',4);
-        g.putEdge('c','e',5);
-        g.putEdge('e','d',1);
+        g.putEdge('a','e',3);
+        g.putEdge('b','d',1);
+        g.putEdge('c','d',6);
+        g.putEdge('c','e',2);
+        g.putEdge('d','e',7);
 
         System.out.println(da.perform(g,'a'));
     }

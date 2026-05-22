@@ -35,12 +35,14 @@ public class KruskalsAlgorithm {
             int indexFrom = verticesToIndex.get(edge.getFirst());
             int indexTo = verticesToIndex.get(edge.getSecond().getFirst());
             if(disjointSet.union(indexFrom,indexTo)){
-                List<Tuple<V,Integer>> edges = minSpanningTree.computeIfAbsent(edge.getFirst(),(k)-> new ArrayList<>());
-                edges.add(edge.getSecond());
+                List<Tuple<V,Integer>> edgesFrom = minSpanningTree.computeIfAbsent(edge.getFirst(),(k)-> new ArrayList<>());
+                List<Tuple<V,Integer>> edgesTo = minSpanningTree.computeIfAbsent(edge.getSecond().getFirst(),(k)-> new ArrayList<>());
+
+                edgesFrom.add(edge.getSecond());
+                edgesTo.add(new Tuple<>(edge.getFirst(),edge.getSecond().getSecond()));
             }
         }
 
-        // directed result
         System.out.println(minSpanningTree);
     }
 
@@ -68,7 +70,6 @@ public class KruskalsAlgorithm {
             }
         }
 
-        // undirected result
         System.out.println(minSpanningTree);
     }
 
