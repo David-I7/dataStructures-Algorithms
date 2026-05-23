@@ -44,12 +44,16 @@ void bubbleSort(T* list,int l, int r, int(*comparator)(const T&,const T&)){
 
 template <typename T>
 int sortAscending(const T& a,const T& b){
-    return a-b;
+    if(a < b) return -1;
+    if(a > b) return 1;
+    return 0;
 }
 
 template <typename T>
 int sortDescending(const T& a,const T& b){
-    return b-a;
+    if(a < b) return 1;
+    if(a > b) return -1;
+    return 0;
 }
 
 template <typename T>
@@ -113,7 +117,7 @@ void merge(T*list,int l,int mid,int r,int(*comparator)(const T&,const T&)){
     while(i < lenA)
         list[k++] = a[i++];
     
-    while(i < lenB)
+    while(j < lenB)
         list[k++] = b[j++];
     
 }
@@ -134,7 +138,7 @@ void mergeSort(T*list,int l,int r,int k,int(*comparator)(const T&,const T&)){
 }
 
 int main(){
-    std::ifstream fis("src/data/sort.txt");
+    std::ifstream fis("sort.txt");
 
     if(!fis.is_open()){
         std::cout << "Fiserul nu s-a putut deschide!\n";
@@ -144,10 +148,23 @@ int main(){
     int n,k,i=0;
     
     fis >> n >> k;
+
+    if(n < 0 || k > n){
+        std::cout << "Datele nu au fost introduse correct!\n";
+        return 1;
+    }
     
     int list[n];
 
-    while(fis >> list[i++]);
+    i = 0;
+    while(i < n && fis >> list[i]){
+        ++i;
+    }
+
+    if(i != n){
+        std::cout << "Nu au fost introduse n elemente in fisier!\n";
+        return 1;
+    }
 
     mergeSort(list, 0, n-1, k, sortAscending);
     printList(list, n);

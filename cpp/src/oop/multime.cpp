@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <cctype>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <iostream>
@@ -40,7 +42,7 @@ class Multime{
             size++;
         }
 
-        // Constructor pentru conversia mai multor elemente la multimea ce contine aceste elementele 
+        // Constructor pentru conversia mai multor elemente la multimea ce contine aceste elemente
         Multime(std::initializer_list<T> list):capacity(DEFAULT_CAPACITY){
             allocElements(capacity);
             for(const T& el: list){
@@ -100,14 +102,24 @@ class Multime{
             return *this;
         }
     
-        // Adauga un element in multime cand este lvalue
+        // Adauga un element in multime
         Multime<T>& operator<<(const T& el){
-            return addImpl(el);
-        }
+            std::size_t h = hashIndex(el,capacity);
+            Node* node = elements[h];
+            
+            if (node == nullptr) {
+                elements[h] = new Node(el);
+                ++size;
+            }else{
+                // Daca nu exista deja, il adaugam in O(1) direct la capul listei
+                if (node->find(el) == nullptr){
+                    elements[h] = new Node(el,node);
+                    ++size;
+                }
+            };
 
-        // Adauga un element in multime cand este rvalue
-        Multime<T>& operator<<(T&& el){
-            return addImpl(std::move(el));
+            checkResize();
+            return *this;
         }
         
         // Sterge un element din multime
@@ -269,12 +281,26 @@ class Multime{
         std::string getStats() const {
             return "(Size = " + std::to_string(size) + ", Capacity = " + std::to_string(capacity) + ")";
         }
-
+    
         inline std::size_t getSize(){
             return size;
         }
 
+        // adaos: Metoda folosita pentru a goli multimea
+        void clear(){
+            if(size == 0) return;
+
+            freeElements();
+
+            capacity = DEFAULT_CAPACITY;
+            allocElements(capacity);
+            size = 0;
+        }
+
         // Afiseaza lista pe standard output
+        // adaos: Pentru a evita ambiguitati in citirea de la consola, am schimbat outputul afisat pe consola pentru stringuri si caractere
+        // 1. Stringurile vor contine ghilimele "" pentru a evita confuziile la parsare cu caractererele
+        // 2. Caracterele speciale '{' si '}' vor fi 'escaped' cu un backslash pentru a evita confuziile cu multimi
         friend std::ostream& operator<<(std::ostream& os,const Multime<T>& multime){
             if (multime.size == 0) {os << "{}"; return os;};
            
@@ -287,15 +313,31 @@ class Multime{
                 Node* node = multime.elements[i];
                 
                 while (node != nullptr) {
-                    // Daca count == multime.size - 1 => am ajus la ultimul element 
-                    if (count == multime.size -1){
+                    // Stringurile vor fi afisate intre ghilimele
+                    if constexpr (std::is_same_v<T, std::string>) {
+                        os << '"' << node->getData() << '"';
+                    } 
+                    else if constexpr (std::is_same_v<T, char>) {
+                        // Caracterele speciale sunt escaped
+                        char ch = node->getData();
+                        if (ch == '{' || ch == '}') {
+                            os << '\\' << ch;
+                        } else {
+                            os << ch;
+                        }
+                    } 
+                    else {
                         os << node->getData();
-                        ++count;
-                        break;
                     }
-                    os << node->getData() << ", ";
+
                     ++count;
-                    node= node->getNext();
+
+                    // Afisam virgule doar daca nu am ajuns la ultimul element
+                    if (count < multime.size) {
+                        os << ", ";
+                    }
+
+                    node = node->getNext();
                 }
 
                 if (count == multime.size) break;
@@ -308,24 +350,124 @@ class Multime{
         
         // Permit clasei std::hash<Multime<T>> sa acceseze elementele private ale multimii pentru a genera hashul
         friend std::hash<Multime<T>>;
+
+        // adaos: Citire de la consola
+        // Forme asteptate (sunt cele create de ): 
+        // '{}' - multimea vida, 
+        // '{x1, x2, ..., xn}' - multime cu elemente de tip T
+        // '{{x1, x2, ..., xn}, {x1, x2, ..., xn}, ... , {x1, x2, ..., xn}}' - multime cu elemente de tip Multime<T>
+        // Formele acceptate sunt cele pe care le produce functia de afisare pe consola
+        friend std::istream& operator>>(std::istream& is, Multime<T>& multime) {
+            // Resetam multimea
+            multime.clear();
+            char ch = '\0';
+
+            // Citim pana cand intalnim primul caracter non whitespace
+            if (!(is >> ch)) return is;
+
+            if (ch != '{') {
+                // Formatul este incorrect
+                is.setstate(std::ios::failbit);
+                return is;
+            }
+
+            if(!(is >> ch)){
+                is.setstate(std::ios::failbit);
+                return is;
+            };
+
+            if (ch == '}') {
+                // Cazul multimii vide
+                return is; 
+            }
+
+            is.putback(ch);
+            
+            while (true) {   
+                
+                T element;
+
+                // Extragem elementul in funtie de tipul T
+
+                if constexpr (std::is_same_v<T, std::string>) {
+                    // Stringurile sunt asteptate sa fie in forma: "continut"
+                    if (is >> ch && ch == '"') {
+                        std::string strToken;
+                        // Citim pana can intalinm cealalta ghilimea
+                        if (std::getline(is, strToken, '"')) {
+                            element = strToken;
+                        } else {
+                            is.setstate(std::ios::failbit);
+                        }
+                    } else is.setstate(std::ios::failbit);
+                }
+                else if constexpr (std::is_same_v<T, char>) {
+                    // Caracterele speciale trebuie tratate diferit: \{  \}
+                    if (is >> ch) {
+                        if (ch == '\\') {
+                            // Urmatorul caracter trebuie sa fie '{' sau '}'
+                            char nextCh;
+                            if (is >> nextCh && (nextCh == '{' || nextCh == '}')) {
+                                element = nextCh;
+                            } else {
+                                is.setstate(std::ios::failbit);
+                            }
+                        } else if (ch == '{' || ch == '}') {
+                            // Caracterele special nu au fost escaped
+                            is.setstate(std::ios::failbit);
+                        }else{
+                            element = ch;
+                        }
+                    }
+                }else {
+                    // Celalate tipuri de elemente nu sunt ambigue
+                    is >> element;
+                }
+
+                // Validam ca elementul a fost parsat fara errori
+                if (!is) {
+                    multime.clear();
+                    return is;
+                }
+
+                multime << element;
+                               
+                // Verificam ce urmeaza dupa element (trebuie sa fie '}' sau ',')
+                if (!(is >> ch)) {
+                    is.setstate(std::ios::failbit);
+                    multime.clear();
+                    return is;
+                }
         
-        // control granular
-        //friend std::size_t std::hash<Multime<T>>::operator()(const Multime<T>& multime) const;
+                if(ch == '}'){
+                    break;
+                } 
+                
+                if (ch != ','){
+                    // Formatul nu este correct (e.g. '{1 2}')
+                    is.setstate(std::ios::failbit);
+                    multime.clear();
+                    return is;
+                };
+                
+            }
+      
+            return is;
+        }
+
 
     private:
         // Clasa interna folosita pentru a implementa elementele listei inlantuita
         class Node{
             public:
            
-            // Member initializer list previne compilatorul sa dea valori default
-            // variabilelor declarate in clasa. 
             Node(const T& data, Node* next = nullptr):data(data),next(next){}
             
             Node(T&& data, Node* next = nullptr):data(std::move(data)),next(next){}
                 
             ~Node(){}
             
-            Node* getNext(){
+            Node* getNext() const{
                 return next;
             }
 
@@ -333,13 +475,12 @@ class Multime{
                 this->next = next;
             }
 
-            const T& getData(){
+            const T& getData() const{
                 return data;
             }
 
             // Creeaza o copie a intregului lant de noduri incepand de aici
-            // Puteam face acest lucru si prin copy constructor sau copy assignment, dar am preferat sa folosesc o metoda pentru lizibilitate
-            Node* deepCopy(){
+            Node* deepCopy() const{
                 Node* curCopy = new Node(data);
                 Node* rootCopy = curCopy;
                 Node* cur = this->getNext();
@@ -386,29 +527,6 @@ class Multime{
        
         inline std::size_t hashIndex(const T& el, std::size_t capacity) const{
             return std::hash<T>{}(el) % capacity;
-        }
-
-        // Adauga un element in multime.
-        // Cu std::forward<U>(el), prezervam tipului referintei elementului 'el'.
-        // Altfel, un rvalue transmis catre functie ar deveni lvalue in interiorul functiei.  
-        template< typename U>
-        Multime<T>& addImpl(U&& el){
-            std::size_t h = hashIndex(el,capacity);
-            Node* node = elements[h];
-            
-            if (node == nullptr) {
-                elements[h] = new Node(std::forward<U>(el));
-                ++size;
-            }else{
-                // Daca nu exista deja, il adaugam in O(1) direct la capul listei
-                if (node->find(el) == nullptr){
-                    elements[h] = new Node(std::forward<U>(el),node);
-                    ++size;
-                }
-            };
-
-            checkResize();
-            return *this;
         }
 
         // Returneaza true daca toate elementele din A se gasesc in B
@@ -549,6 +667,22 @@ namespace std {
 class Point{
     public:
         Point(int x = 0, int y = 0): x(x),y(y){};
+
+        // adaos: Constructor de move 
+        Point(Point&& other) {
+            x = other.x;
+            y = other.y; 
+
+            // Resetam lui other la cele default
+            other.x = 0;
+            other.y = 0;
+        };
+
+        // adaos: Constructor de copiere;
+        Point(const Point& other): x(other.x), y(other.y) {};
+
+        // adaos: Destructor
+        ~Point() {};
     
         inline int getX() const {
             return x;
@@ -571,13 +705,293 @@ class Point{
             return x == other.x && y == other.y;
         }
 
-        // NU este e functie asociata clasei, chiar daca este declarata in interiorul ei.
         friend std::ostream& operator<<(std::ostream& os, const Point& p) {
             return os << "(" << p.x << ", " << p.y << ")";
         }
 
+        // adaos: Citire de la consola
+        // Format asteptat: '(valoare_x, valoare_y)'
+        // Caracterele whitespace sunt ignorate 
+        friend std::istream& operator>>(std::istream& is, Point& p) {
+            char ch='\0';
+
+            // Citim pana cand intalnim primul caracter non whitespace
+            if (!(is >> ch)) return is;
+
+            if (ch != '(') {
+                // Formatul este incorrect
+                is.setstate(std::ios::failbit);
+                return is;
+            }
+            
+            int x = 0, y = 0;
+                
+            if(!(is >> x) || (!is >> ch) || ch != ','){
+                // Formatul este incorrect
+                is.setstate(std::ios::failbit);
+                return is;
+            }
+
+            if(!(is >> y) || (!is >> ch) || ch != ')'){
+                // Formatul este incorrect
+                is.setstate(std::ios::failbit);
+                return is;
+            }
+
+            p.x = x;
+            p.y = y;
+              
+            return is;
+        }
+
     private:
         int x = 0,y = 0;
+};
+
+// adaos: Clasa Complex
+class Complex {
+private:
+    double real;
+    double imag;
+
+public:
+    // Constructori
+
+    Complex(double real = 0.0, double imag = 0.0) : real(real), imag(imag) {}
+    
+    Complex(const Complex& other) : real(other.real), imag(other.imag) {}
+
+    Complex(Complex&& other) : real(other.real), imag(other.imag) {
+        other.real = 0.0;
+        other.imag = 0.0;
+    }
+
+    // Destructor
+
+    ~Complex() {}
+
+    // Operatorii de atribuire
+
+    Complex& operator=(const Complex& other) {
+        if(&other == this) return *this;
+
+        real = other.real;
+        imag = other.imag;
+        
+        return *this;
+    }
+
+    Complex& operator=(Complex&& other) {
+        if(&other == this) return *this;
+
+        real = other.real;
+        imag = other.imag;
+        other.imag = 0.0;
+        other.real = 0.0;
+        
+        return *this;
+    }
+
+    // Operator de egalitate
+    bool operator==(const Complex& other) const {
+        return real == other.real && imag == other.imag;
+    }
+
+    // Minus unar
+    Complex operator-() const {
+        return Complex(-real, -imag);
+    }
+
+    // Operator de adunare
+    Complex operator+(const Complex& other) const {
+        return Complex(real + other.real, imag + other.imag);
+    }
+    
+    // Operator de scadere
+    Complex operator-(const Complex& other) const {
+        return Complex(real - other.real, imag - other.imag);
+    }
+    
+    // Operator de inmultire
+    Complex operator*(const Complex& other) const {
+        return Complex(
+            real * other.real - imag * other.imag,
+            real * other.imag + imag * other.real
+        );
+    }
+    
+    // Operator de impartire
+    Complex operator/(const Complex& other) const {
+        double denominator = other.magnitudeSquared();
+        if (denominator == 0.0) {
+            throw std::runtime_error("Cannot divide by zero.");
+        }
+        
+        Complex conjugate = other.getConjugate();
+        Complex numerator = (*this) * conjugate;
+
+        return Complex(
+            numerator.real / denominator,
+            numerator.imag / denominator
+        );
+    }
+
+    Complex getConjugate() const {
+        return Complex(real, -imag);
+    }
+
+    // Calculeaza magnitudinea la patrat
+    double magnitudeSquared() const {
+        return real * real + imag * imag;
+    }
+
+    double getReal() const { return real; }
+    
+    double getImag() const { return imag; }
+
+    
+    friend std::ostream& operator<<(std::ostream& os, const Complex& c) {
+        // Caz 1: partea imaginara este 0, deci afisam doar partea reala
+        if (c.imag == 0.0) {
+            os << c.real;
+            return os;
+        }
+
+        bool imagHasAbsOne = (std::abs(c.imag) == 1.0);
+        
+        // Caz 2: partea reala este 0, deci afisam doar partea imaginara
+        // Daca valoarea absoluta a partii imaginare este 1, nu mai afisam si coeficientul sau 
+        if (c.real == 0.0) {
+            if (imagHasAbsOne) {
+                os << ((c.imag > 0) ? "i" : "-i");
+            } else {
+                os << c.imag << "i";
+            }
+            return os;
+        }
+
+        // Caz 3: partea imaginara si cea reala sunt diferite de 0
+        os << c.real;
+
+        if (c.imag < 0.0) {
+            if (imagHasAbsOne) os << "-i";
+            else os << c.imag << "i";
+        } else {
+            if (imagHasAbsOne) os << "+i";
+            else os << "+" << c.imag << "i";
+        }
+
+        return os;
+    }
+
+    // Formate acceptate: '0.3', '0.3+1.4i', '-i', '1e-5+2.3i' (notatii stiintifice)
+    // Formele acceptate sunt cele pe care le produce functia de afisare pe consola
+    friend std::istream& operator>>(std::istream& is, Complex& other) {
+        std::string input;
+
+        // Sarim peste caracterele whitespace de la inceput
+        if (!(is >> std::ws)) {
+            return is;
+        }
+
+        // Extragem numarul complex din std::cin
+        while (true) {
+            int nextInt = is.peek(); // Ne uitam la urmatorul caracter fara sa-l scoatem din stream
+            if (nextInt == EOF) {
+                break; 
+            }
+
+            char nextCh = nextInt;
+
+            // Caracterele permise sunt: 0-9, '.', '+', '-', 'i' si 'e'
+            if (std::isdigit(nextCh) || nextCh == '.' || nextCh == 'e' || 
+                nextCh == '-' || nextCh == '+' || nextCh == 'i') {
+                
+                is.get(nextCh); // Extragem caracterul
+                input += nextCh;
+
+                // Ne oprim din citit dupa ce intalnim 'i', deoarece marcheaza sfarsitul numarului complex
+                if (nextCh == 'i') {
+                    break;
+                }
+            } else {
+                // Caracterul nu este permis, ne oprim din citit 
+                break;
+            }
+        }
+
+        // Daca nu am reusit sa colectam niciun caracter valid, atunci inputul este invalid
+        if (input.empty()) {
+            is.setstate(std::ios::failbit);
+            return is;
+        }
+
+        other.imag = 0.0;
+        other.real = 0.0;
+
+        // Cazurile triviale
+        if(input == "0"){
+            return is;
+        }else if (input == "i"){
+            other.imag = 1.0;
+            return is;
+        }else if (input == "-i"){
+            other.imag = -1.0;
+            return is;
+        }
+
+        try{
+            std::size_t iPos = input.find('i');
+
+            // Caz A: Inputul nu contine partea imaginara (ex: "5.5")
+            if(iPos == std::string::npos){
+                size_t idx;
+                double real = std::stod(input, &idx);
+                if (idx != input.size()) throw std::invalid_argument("Numar real invalid");
+                other.real = real;
+                return is;
+            }
+
+            // Caz B: 'i' este prezent si trebuie sa fie ultimul caracter
+            if (iPos != input.size() - 1) {
+                throw std::invalid_argument("Format invalid: 'i' trebuie sa fie ultimul caracter");
+            }
+
+            size_t idx;
+            double firstNum = std::stod(input, &idx);
+
+            // Daca std::stod a consumat toate caracterele, inseamna ca nu avem parte reala.
+            // ex: "2.5i" 
+            if (idx == input.size() - 1) {
+                other.imag = firstNum;
+                return is;
+            } 
+            
+            other.real = firstNum;
+
+            // Preluam coeficientul partii imaginare
+            // ex: din "-3.5+5.6i" => remaining = "+5.6"
+            std::string remaining = input.substr(idx, input.size() - 1 - idx);
+
+             
+            if (remaining == "+") {
+                other.imag = 1.0;
+            }else if (remaining == "-") {
+                other.imag = -1.0;
+            } else {
+                size_t idxImag;
+                other.imag = std::stod(remaining, &idxImag);
+                if (idxImag != remaining.size()) throw std::invalid_argument("Parte imaginara invalida");
+            }
+            
+        }catch(...){
+            is.setstate(std::ios::failbit);
+            other.imag = 0.0;
+            other.real = 0.0;
+        }
+
+        return is;
+    }
 };
 
 // Multimea are nevoie de o functie de hash pentru clasa Point
@@ -587,6 +1001,18 @@ namespace std {
         std::size_t operator()(const Point& p) const {
             // Combinam hash-urile membrilor x si y
             return std::hash<int>()(p.getX()) ^ (std::hash<int>()(p.getY()) << 1);
+        }
+    };
+}
+
+// adaos:
+// Multimea are nevoie de o functie de hash pentru clasa Complex
+namespace std {
+    template <>
+    struct hash<Complex> {
+        std::size_t operator()(const Complex& c) const {
+            // Combinam hash-urile membrilor x si y
+            return std::hash<double>()(c.getImag()) ^ (std::hash<double>()(c.getReal()) << 1);
         }
     };
 }
@@ -841,6 +1267,112 @@ int main(){
         delete  ptr2;
     }
 
+    std::cout << "==========================================\n";
+    std::cout << "   TEST ADAOS: Multime de numere complexe \n";
+    std::cout << "==========================================\n";
+    {
+        std::cout << "=== 1. Intializare prin simularea citirii de la consola  ===\n";
+        Multime<Multime<Complex>> C;
+        
+        // Testam diverse forme acceptate: 0, 5+3.5i, i pur, notatie exponentiala 'e'
+        std::istringstream stream(" {{}, {5+3.5i, 2-1e1i}, {-i}, {0}, {4e+2+i}} ");
+
+        if (stream >> C) {
+            std::cout << "Succes parsare: " << C << "\n";
+        } else {
+            std::cout << "Eroare: Parsarea a esuat pe un sir considerat valid!\n";
+        }
+
+        std::cout << "\n=== 2. Intializare prin simularea citirii de la consola folosind un sir invalid (Trebuie sa declanseze failbit) ===\n";
+        std::istringstream stream_gresit(" {{1+2i}, {4+5ix}} "); // 'x' este ilegal la finalul unui numar complex
+        Multime<Multime<Complex>> MultimeInvalida;
+
+        if (!(stream_gresit >> MultimeInvalida)) {
+            std::cout << "Succes test: Parser-ul a respins corect caracterul 'x'.\n";
+            std::cout << "Stare multime (trebuie sa fie vida): " << MultimeInvalida << "\n";
+        } else {
+            std::cout << "Eroare: Parser-ul a acceptat in mod eronat un format invalid!\n";
+        }
+
+    }
+
+    std::cout << "\n==========================================\n";
+    std::cout << "   TEST ADAOS: Multime de float \n";
+    std::cout << "==========================================\n";
+    {
+        std::cout << "=== 1. Initializare si Constructori ===\n"; 
+        
+        Multime<float> A; A << 1.25f << 2.5f << 3.14f << 4.0f; 
+        Multime<float> B{3.14f, 4.0f, 5.75f, 6.0f}; 
+        
+        std::cout << "A = " << A << "\n"; 
+        std::cout << "B (initializer list) =   " << B << "\n";
+
+        std::cout << "\n=== 2. Operatii pe Multimi ===\n";
+        Multime<float> reuniune = A + B;
+        std::cout << "A + B (Reuniune) = " << reuniune << "\n";
+
+        Multime<float> intersectie = A * B;
+        std::cout << "A * B (Intersectie) = " << intersectie << "\n";
+
+        Multime<float> diferenta1 = A - B;
+        std::cout << "A - B (Diferenta) = " << diferenta1 << "\n";
+
+        Multime<float> diferenta2 = B - A;
+        std::cout << "B - A (Diferenta) = " << diferenta2 << "\n";
+
+        std::cout << "\n=== 3. Operatii Relationale ===\n";
+        Multime<float> S{3.14f, 4.0f};
+        std::cout << "S = " << S << "\n";
+        std::cout << "B = " << B << "\n";
+        
+        // Verificam incluziunile matematice
+        std::cout << "S este submultime a lui B? (S <= B): " << (S <= B ? "Da" : "Nu") << "\n";
+        std::cout << "B este superset pentru S? (B >= S): "   << (B >= S ? "Da" : "Nu") << "\n";
+        std::cout << "Sunt S si B egale? (S == B): "           << (S == B ? "Da" : "Nu") << "\n";
+
+    }
+
+    std::cout << "\n==========================================\n";
+    std::cout << "   TEST ADAOS: Citire multime de la consola (cazuri speciale) \n";
+    std::cout << "==========================================\n";
+    {
+        std::cout << "=== 1. Multime de multimi de String ===\n";
+        Multime<Multime<std::string>> S;
+        // Fiecare string este delimitat strict de ghilimele. Acest lucru permite izolarea acoladelor ca date.
+        std::istringstream stream(" {{}, {\"{}\"}, {\"{\"}, {\"}\"}, {\"\"}, {\"complex, string\"}} ");
+
+        if (stream >> S) {
+            std::cout << "Succes parsare: " << S << "\n";
+        } else {
+            std::cout << "Eroare parsare String!\n";
+        }
+
+        std::cout << "\n=== 2. Multime de multimi de char (Acolade escaped cu backslash) ===\n";
+        Multime<Multime<char>> C;
+        // Acoladele folosite ca date sunt escaped: \{ si \}. Cele structurale sunt curate.
+        std::istringstream stream2(" {{}, {\\{,\\}}, {\\{}, {\\}}} ");
+
+        if (stream2 >> C) {
+            std::cout << "Succes parsare: " << C << "\n";
+        } else {
+            std::cout << "Eroare parsare char!\n";
+        }
+
+        std::cout << "\n=== 3. Multime de multimi de char invalida (Acolade unescaped in mod ilegal) ===\n";
+        std::istringstream stream3(" {{}, {\\{,\\}}, {\\{}, {{}} "); // Ultima submultime contine un '{' unescaped 
+        Multime<Multime<char>> MultimeInvalida;
+
+        if (!(stream3 >> MultimeInvalida)) {
+            std::cout << "Succes test! Parser-ul a respins corect caracterul unescaped '{'\n";
+            std::cout << "Stare multime (trebuie sa fie vida):" << MultimeInvalida << "\n";
+        } else {
+            std::cout << "Eroare: Parser-ul a acceptat in mod eronat un format invalid!\n";
+            std::cout << MultimeInvalida << "\n";
+        }
+
+    }
+   
     std::cout << "\n==========================================\n";
     std::cout << "   SFARSIT TEST\n";
     std::cout << "==========================================\n";

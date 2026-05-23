@@ -1,6 +1,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <cstdlib>
+#include <ctime>
 
 struct Node{
     int data;
@@ -12,7 +14,7 @@ int randInt(int start, int end){
 }
 
 int main(){
-    std::ifstream fis("src/data/ruleta.txt");
+    std::ifstream fis("ruleta.txt");
 
     if(!fis.is_open()){
         std::cout << "Fiserul nu s-a putut deschide!\n";
@@ -29,17 +31,45 @@ int main(){
     srand(time(0));
 
     fis >> k >> nr >> n;
+    std::cout << "k=" << k << ", nr=" << nr << ", n=" << n << "\n"; 
 
-    Node* head = new Node();
-    Node* tail = head;
-    
-    while(fis >> tail->data){
-        tail->next = new Node();
-        tail = tail->next;
+    if(k < 3 || nr < 3 || n < 3 || n <k){
+        std::cout << "Datele au fost introduse incorrect\n";
+        return 1;
     }
 
-    delete tail->next;
-    tail->next = head;
+    // Cream lista inlantuita    
+    int data = 0;
+    int length = 0;
+
+    Node* head = new Node();
+    Node* cur = head;
+    Node* prev = nullptr;
+
+    while(fis >> data){
+        cur->data = data;
+        cur->next = new Node();
+        
+        prev = cur;
+        cur = cur->next;
+        length++;
+    }
+
+    if(length != k){
+        std::cout << "Nu au fost introduse k sectoare in fisier!\n";
+        return 1;
+    }
+
+    delete prev->next;
+    prev->next = head;
+
+    cur = head;
+    std::cout << "Sectoare: ";
+    do{
+        std::cout << cur->data << " ";
+        cur = cur->next;
+    } while(cur != head);
+    std::cout << "\n\n";
 
     int score = 0;
     // Numar maxim de incercari
@@ -48,7 +78,7 @@ int main(){
     int i=1;
 
     std::string decizie;
-    Node* cur = head;
+    cur = head;
 
     while(true){
         if (i > s) break;
@@ -83,5 +113,4 @@ int main(){
     }
 
     std::cout << "Scor final: " << score << "\n";
-
 }
