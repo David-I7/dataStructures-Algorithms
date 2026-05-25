@@ -24,6 +24,10 @@ public class HuffmanEncoder {
             this.left = left;
             this.right = right;
         }
+
+        public boolean leaf(){
+            return left == null && right == null;
+        }
     }
 
     public class EncodingResult{
@@ -70,28 +74,40 @@ public class HuffmanEncoder {
         Node huffmanTree = heap.pop();
         var huffmanCodesMap = new HashMap<Character,String>();
 
-        // In order traversal
+        // Pre order traversal
         Stack<Node> stack = new Stack<>();
 
-        Node cur = huffmanTree;
-        StringBuilder codes = new StringBuilder();
-        while(!stack.isEmpty() || cur != null){
-
-            while (cur != null){
-               stack.add(cur);
-               codes.append('0');
-               cur = cur.left;
+        Node current = huffmanTree;
+        StringBuilder path = new StringBuilder();
+        Node lastVisited = null;
+        while (!stack.isEmpty() || current != null) {
+            if (current != null) {
+                stack.push(current);
+                if (current.left != null) {
+                    path.append('0');
+                    current = current.left;
+                } else if (current.right != null) {
+                    path.append('1');
+                    current = current.right;
+                } else {
+                    // It's a leaf node
+                    huffmanCodesMap.put(current.character, path.toString());
+                    current = null; // Force pop
+                }
+            } else {
+                Node peekNode = stack.peek();
+                // If right child exists and we're coming back from left child
+                if (peekNode.right != null && lastVisited != peekNode.right) {
+                    path.append('1');
+                    current = peekNode.right;
+                } else {
+                    // We are done with this node, moving up
+                    lastVisited = stack.pop();
+                    if (!path.isEmpty()) {
+                        path.deleteCharAt(path.length() - 1);
+                    }
+                }
             }
-
-            cur = stack.pop();
-            codes.delete(codes.length()-1,codes.length());
-            if(cur.left == null && cur.right == null) {
-                huffmanCodesMap.put(cur.character, codes.toString());
-            }
-            if(cur.right != null){
-                codes.append('1');
-            }
-            cur = cur.right;
         }
 
         StringBuilder encoded = new StringBuilder();
@@ -102,26 +118,28 @@ public class HuffmanEncoder {
         return new EncodingResult(huffmanTree,encoded.toString());
     }
 
-    public String decode(EncodingResult encoded){
-        Node huffmanTree = encoded.huffmanTree;
-        String encodedText = encoded.encoded;
+    public String decode(EncodingResult result){
+        Node huffmanTree = result.huffmanTree;
+        String encodedText = result.encoded;
+
+        if(huffmanTree.leaf()){
+            return String.valueOf(huffmanTree.character).repeat(result.encoded.length());
+        }
 
         StringBuilder decoded = new StringBuilder();
         Node cur = huffmanTree;
-        for(var ch: encodedText.toCharArray()){
-            if(cur.left == null && cur.right == null){
+
+        for(var bit: encodedText.toCharArray()){
+            if (bit == '0') {
+                cur = cur.left;
+            } else {
+                cur = cur.right;
+            }
+
+            if(cur.leaf()){
                 decoded.append(cur.character);
                 cur = huffmanTree;
             }
-            if(ch == '0'){
-                cur = cur.left;
-            }else{
-                cur = cur.right;
-            }
-        }
-        if(cur.left == null && cur.right == null){
-            decoded.append(cur.character);
-            cur = huffmanTree;
         }
 
         return decoded.toString();
