@@ -1,14 +1,13 @@
 {
   "configurations": [
-
     {
-       "name": "linux",
-        "includePath": ["${workspaceFolder}/**"],
+      "name": "linux",
+      "includePath": ["${workspaceFolder}/**"],
       "defines": ["_DEBUG", "UNICODE", "_UNICODE"],
-       "cStandard": "c17",
+      "cStandard": "c17",
       "cppStandard": "c++17",
       "intelliSenseMode": "${default}",
-      "compilerPath": "/usr/bin/gcc"
+      "compilerPath": "C:\\msys64\\ucrt64\\bin\\g++.exe"
     }
   ],
   "version": 4
